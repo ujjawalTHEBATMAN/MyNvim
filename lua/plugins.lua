@@ -1376,6 +1376,10 @@ return {
 		config = function()
 			require("noice").setup({
 				lsp = {
+					-- Disable signature help (we use lsp_signature.nvim instead)
+					signature = { enabled = false },
+					-- Disable hover (we use native or lsp_signature)
+					hover = { enabled = false },
 					-- override markdown rendering so that **cmp** and other plugins use Treesitter
 					override = {
 						["vim.lsp.util.convert_input_to_markdown_lines"] = true,
@@ -1584,14 +1588,14 @@ return {
 		config = function()
 			require("lsp_signature").setup({
 				bind = true,
-				hint_enable = true,
-				hint_prefix = "󰏫 ",
-				hint_scheme = "String",
-				hi_parameter = "LspSignatureActiveParameter",
 				floating_window = true,
 				floating_window_above_cur_line = true,
 				floating_window_off_x = 1,
 				floating_window_off_y = 0,
+				hint_enable = true,
+				hint_prefix = "󰏫 ",
+				hint_scheme = "String",
+				hi_parameter = "LspSignatureActiveParameter",
 				fix_pos = false,
 				always_trigger = false,
 				auto_close_after = nil,
