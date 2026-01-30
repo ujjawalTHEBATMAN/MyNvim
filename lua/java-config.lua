@@ -227,10 +227,10 @@ M.open_floating_terminal = function(cmd, title)
 	-- Start terminal
 	vim.fn.termopen(cmd, {
 		on_exit = function(_, exit_code)
-			if exit_code == 0 then
-				vim.api.nvim_buf_set_lines(buf, -1, -1, false, { "", "[Process exited with code 0]" })
-			else
-				vim.api.nvim_buf_set_lines(buf, -1, -1, false, { "", "[Process exited with code " .. exit_code .. "]" })
+			-- Only write to buffer if it still exists and is modifiable (terminal may have made it non-modifiable)
+			if vim.api.nvim_buf_is_valid(buf) and vim.bo[buf].modifiable then
+				local msg = exit_code == 0 and "[Process exited with code 0]" or ("[Process exited with code " .. exit_code .. "]")
+				pcall(vim.api.nvim_buf_set_lines, buf, -1, -1, false, { "", msg })
 			end
 		end,
 	})

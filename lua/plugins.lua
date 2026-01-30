@@ -345,19 +345,19 @@ return {
 
 	-- ============================================
 	-- TREESITTER (Syntax Highlighting)
+	-- Treesitter loads at startup so nvim-treesitter.configs exists before
+	-- nvim-treesitter-textobjects is ever sourced (fixes "module not found").
 	-- ============================================
 	{
 		"nvim-treesitter/nvim-treesitter",
 		build = ":TSUpdate",
-		event = { "BufReadPost", "BufNewFile" },
-		dependencies = {
-			"nvim-treesitter/nvim-treesitter-textobjects",
-		},
+		priority = 95,
+		lazy = false,
 		config = function()
 			require("nvim-treesitter.configs").setup({
-				ensure_installed = { 
-					"java", "xml", "yaml", "json", "lua", "vim", "vimdoc", 
-					"markdown", "markdown_inline", "bash" 
+				ensure_installed = {
+					"java", "xml", "yaml", "json", "lua", "vim", "vimdoc",
+					"markdown", "markdown_inline", "bash",
 				},
 				highlight = { enable = true, additional_vim_regex_highlighting = false },
 				indent = { enable = true },
@@ -375,6 +375,11 @@ return {
 				},
 			})
 		end,
+	},
+	{
+		"nvim-treesitter/nvim-treesitter-textobjects",
+		dependencies = { "nvim-treesitter/nvim-treesitter" },
+		event = { "BufReadPost", "BufNewFile" },
 	},
 
 	-- ============================================
@@ -721,9 +726,8 @@ return {
 				},
 			}
 
-			-- Auto open/close dapui
-			dap.listeners.after.attach.event_initialized["dapui_config"] = function() dapui.open() end
-			dap.listeners.after.launch.event_initialized["dapui_config"] = function() dapui.open() end
+			-- Auto open/close dapui (use flat listener names: after.event_*, before.event_*)
+			dap.listeners.after.event_initialized["dapui_config"] = function() dapui.open() end
 			dap.listeners.before.event_terminated["dapui_config"] = function() dapui.close() end
 			dap.listeners.before.event_exited["dapui_config"] = function() dapui.close() end
 
