@@ -265,6 +265,7 @@ return {
 		dependencies = { 
 			"nvim-lua/plenary.nvim",
 			{ "nvim-telescope/telescope-fzf-native.nvim", build = "make" },
+			"nvim-telescope/telescope-ui-select.nvim",
 		},
 		cmd = "Telescope",
 		keys = {
@@ -305,9 +306,13 @@ return {
 						override_file_sorter = true,
 						case_mode = "smart_case",
 					},
+					["ui-select"] = {
+						require("telescope.themes").get_dropdown({}),
+					},
 				},
 			})
 			telescope.load_extension("fzf")
+			telescope.load_extension("ui-select")
 		end,
 	},
 
@@ -1304,4 +1309,117 @@ return {
 			})
 		end,
 	},
+
+	-- ============================================
+	-- USER SELECTED ENHANCEMENTS (Level Up)
+	-- ============================================
+
+	-- 2. KULALA (HTTP Client)
+	{
+		"mistweaverco/kulala.nvim",
+		keys = {
+			{ "<leader>R", "", desc = "+Rest" },
+			{ "<leader>Rr", function() require("kulala").run() end, desc = "Send Request" },
+			{ "<leader>Rp", function() require("kulala").jump_prev() end, desc = "Prev Request" },
+			{ "<leader>Rn", function() require("kulala").jump_next() end, desc = "Next Request" },
+			{ "<leader>Ri", function() require("kulala").inspect() end, desc = "Inspect Request" },
+		},
+		opts = {},
+	},
+
+	-- 3. FLASH (Navigation)
+	{
+		"folke/flash.nvim",
+		event = "VeryLazy",
+		opts = {},
+		keys = {
+			{ "s", mode = { "n", "x", "o" }, function() require("flash").jump() end, desc = "Flash" },
+			{ "S", mode = { "n", "x", "o" }, function() require("flash").treesitter() end, desc = "Flash Treesitter" },
+			{ "r", mode = "o", function() require("flash").remote() end, desc = "Remote Flash" },
+			{ "R", mode = { "o", "x" }, function() require("flash").treesitter_search() end, desc = "Treesitter Search" },
+			{ "<c-s>", mode = { "c" }, function() require("flash").toggle() end, desc = "Toggle Flash Search" },
+		},
+	},
+
+	-- 5. OIL (File System)
+	{
+		"stevearc/oil.nvim",
+		opts = {},
+		dependencies = { "nvim-tree/nvim-web-devicons" },
+		keys = {
+			{ "-", "<cmd>Oil<cr>", desc = "Open Parent Directory" },
+		},
+		config = function()
+			require("oil").setup({
+				view_options = {
+					show_hidden = true,
+				},
+			})
+		end,
+	},
+
+	-- 6. DIFFVIEW (Git History & Diff)
+	{
+		"sindrets/diffview.nvim",
+		cmd = { "DiffviewOpen", "DiffviewFileHistory" },
+		keys = {
+			{ "<leader>gd", "<cmd>DiffviewOpen<cr>", desc = "Diff View Open" },
+			{ "<leader>gh", "<cmd>DiffviewFileHistory %<cr>", desc = "File History" },
+			{ "<leader>gc", "<cmd>DiffviewClose<cr>", desc = "Diff View Close" },
+		},
+	},
+
+	-- 7. GLANCE (LSP Peeking)
+	{
+		"dnlhc/glance.nvim",
+		cmd = "Glance",
+		keys = {
+			{ "gpd", "<cmd>Glance definitions<CR>", desc = "peek definitions" },
+			{ "gpr", "<cmd>Glance references<CR>", desc = "peek references" },
+			{ "gpy", "<cmd>Glance type_definitions<CR>", desc = "peek type definitions" },
+			{ "gpi", "<cmd>Glance implementations<CR>", desc = "peek implementations" },
+		},
+		config = function()
+			require("glance").setup({
+				border = {
+					enable = true,
+					top_char = "―",
+					bottom_char = "―",
+				},
+			})
+		end,
+	},
+
+	-- 8. UFO (High Performance Folding)
+	{
+		"kevinhwang91/nvim-ufo",
+		dependencies = { "kevinhwang91/promise-async" },
+		event = "BufReadPost",
+		init = function()
+			vim.o.fillchars = [[eob: ,fold: ,foldopen:,foldsep: ,foldclose:]]
+			vim.o.foldcolumn = "1"
+			vim.o.foldlevel = 99
+			vim.o.foldlevelstart = 99
+			vim.o.foldenable = true
+		end,
+		config = function()
+			require("ufo").setup({
+				provider_selector = function()
+					return { "treesitter", "indent" }
+				end,
+			})
+		end,
+	},
+
+	-- 9. VIM-VISUAL-MULTI (Multi Cursor)
+	{
+		"mg979/vim-visual-multi",
+		branch = "master",
+		init = function()
+			-- Disable default mappings if they conflict, but usually they are fine
+			vim.g.VM_theme = "purplegray"
+		end,
+		event = "BufReadPost",
+	},
+
 }
