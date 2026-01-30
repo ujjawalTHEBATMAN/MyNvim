@@ -180,6 +180,23 @@ return {
 				return ""
 			end
 
+			-- Macro recording indicator
+			local function macro_recording()
+				local reg = vim.fn.reg_recording()
+				if reg == "" then return "" end
+				return "󰑋 Recording @" .. reg
+			end
+
+			-- Search count
+			local function search_count()
+				if vim.v.hlsearch == 0 then return "" end
+				local ok, count = pcall(vim.fn.searchcount, { recompute = true })
+				if not ok or count.total == 0 then return "" end
+				if count.incomplete == 1 then return "?/?" end
+				local too_many = count.total > count.maxcount
+				return string.format("%d/%s", count.current, too_many and ">" .. count.maxcount or count.total)
+			end
+
 			require("lualine").setup({
 				options = {
 					theme = "catppuccin",
@@ -188,13 +205,17 @@ return {
 					globalstatus = true,
 				},
 				sections = {
-					lualine_a = { "mode" },
+					lualine_a = { 
+						"mode",
+						{ macro_recording, color = { fg = "#f38ba8", gui = "bold" } },
+					},
 					lualine_b = { "branch", "diff", "diagnostics" },
 					lualine_c = { 
-						{ "filename", path = 1 },
+						{ "filename", path = 1, symbols = { modified = " ●", readonly = " 󰌾", unnamed = " [No Name]" } },
 						{ lsp_clients, icon = "󰌘" },
 					},
 					lualine_x = { 
+						{ search_count, icon = "" },
 						{ java_version, icon = "☕", cond = function() return vim.bo.filetype == "java" end },
 						"encoding", 
 						"fileformat", 
@@ -203,7 +224,7 @@ return {
 					lualine_y = { "progress" },
 					lualine_z = { "location" },
 				},
-				extensions = { "nvim-tree", "trouble", "mason", "lazy" },
+				extensions = { "nvim-tree", "trouble", "mason", "lazy", "quickfix" },
 			})
 		end,
 	},
@@ -215,26 +236,74 @@ return {
 			local alpha = require("alpha")
 			local dashboard = require("alpha.themes.dashboard")
 			
+			-- Colorful ASCII Header
 			dashboard.section.header.val = {
-				"                                                     ",
-				"  ███╗   ██╗███████╗ ██████╗ ██╗   ██╗██╗███╗   ███╗ ",
-				"  ████╗  ██║██╔════╝██╔═══██╗██║   ██║██║████╗ ████║ ",
-				"  ██╔██╗ ██║█████╗  ██║   ██║██║   ██║██║██╔████╔██║ ",
-				"  ██║╚██╗██║██╔══╝  ██║   ██║╚██╗ ██╔╝██║██║╚██╔╝██║ ",
-				"  ██║ ╚████║███████╗╚██████╔╝ ╚████╔╝ ██║██║ ╚═╝ ██║ ",
-				"  ╚═╝  ╚═══╝╚══════╝ ╚═════╝   ╚═══╝  ╚═╝╚═╝     ╚═╝ ",
-				"                                                     ",
+				"",
+				"   ⣴⣶⣤⡤⠦⣤⣀⣤⠆     ⣈⣭⣭⣿⣶⣿⣦⣼⣆         ",
+				"    ⠉⠻⢿⣿⠿⣿⣿⣶⣦⠤⠄⡠⢾⣿⣿⡿⠋⠉⠉⠻⣿⣿⡛⣦       ",
+				"          ⠈⢿⣿⣟⠦ ⣾⣿⣿⣷    ⠻⠿⢿⣿⣧⣄     ",
+				"           ⣸⣿⣿⢧ ⢻⠻⣿⣿⣷⣄⣀ ⠢⣀⡀⠈⠙⠿⠄    ",
+				"          ⢠⣿⣿⣿⠈  ⠡⠌⣻⣿⣿⣿⣿⣿⣿⣿⣛⣳⣤⣀⣀   ",
+				"   ⢠⣧⣶⣥⡤⢄ ⣸⣿⣿⠂  ⠢ ⢹⣿⣿⣿⣿⣿⣿⣿⣿⣿⠇    ",
+				"  ⣟⣿⣿⣿⣿⣿⣿⣷⣻⣿⣿⣧⡢⣔⡣⣂  ⣿⣿⣿⣿⣿⣿⣿⠇     ",
+				" ⣿⣿⣿⣿⣿⣿⡟⣿⡿⣿⣿⣿⣿⣿⣿⣿⣽⣿⣿⣿⣿⣿⡟⠁      ",
+				" ⣿⣿⣿⣿⣿⣿⡇⣿⣿⣮⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠁       ",
+				" ⠛⠿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠟⠛⠁            ",
+				"",
+				"     N E O V I M   -   The Hyperextensible Editor",
+				"",
 			}
+			dashboard.section.header.opts.hl = "AlphaHeader"
 			
+			-- Buttons with icons
 			dashboard.section.buttons.val = {
-				dashboard.button("f", "  Find file", ":Telescope find_files <CR>"),
+				dashboard.button("f", "󰈞  Find file", ":Telescope find_files <CR>"),
 				dashboard.button("e", "  New file", ":ene <BAR> startinsert <CR>"),
-				dashboard.button("r", "  Recent files", ":Telescope oldfiles <CR>"),
-				dashboard.button("t", "  Find text", ":Telescope live_grep <CR>"),
-				dashboard.button("s", "  Restore Session", ":SessionRestore<CR>"),
-				dashboard.button("l", "  Lazy", ":Lazy<CR>"),
-				dashboard.button("q", "  Quit", ":qa<CR>"),
+				dashboard.button("r", "󰄉  Recent files", ":Telescope oldfiles <CR>"),
+				dashboard.button("t", "󰊄  Find text", ":Telescope live_grep <CR>"),
+				dashboard.button("s", "󰦛  Restore Session", ":SessionRestore<CR>"),
+				dashboard.button("c", "  Configuration", ":e $MYVIMRC<CR>"),
+				dashboard.button("l", "󰒲  Lazy Plugins", ":Lazy<CR>"),
+				dashboard.button("m", "󱌣  Mason Packages", ":Mason<CR>"),
+				dashboard.button("q", "󰩈  Quit", ":qa<CR>"),
 			}
+
+			-- Footer with stats
+			local function footer()
+				local stats = require("lazy").stats()
+				local ms = math.floor(stats.startuptime * 100 + 0.5) / 100
+				local ver = vim.version()
+				return string.format(
+					"⚡ Neovim v%d.%d.%d  󰏗 %d plugins loaded in %.2fms",
+					ver.major, ver.minor, ver.patch, stats.loaded, ms
+				)
+			end
+
+			dashboard.section.footer.val = footer()
+			dashboard.section.footer.opts.hl = "AlphaFooter"
+
+			-- Update footer after lazy loads
+			vim.api.nvim_create_autocmd("User", {
+				pattern = "LazyVimStarted",
+				callback = function()
+					dashboard.section.footer.val = footer()
+					pcall(vim.cmd.AlphaRedraw)
+				end,
+			})
+
+			-- Layout spacing
+			dashboard.opts.layout = {
+				{ type = "padding", val = 2 },
+				dashboard.section.header,
+				{ type = "padding", val = 2 },
+				dashboard.section.buttons,
+				{ type = "padding", val = 1 },
+				dashboard.section.footer,
+			}
+
+			-- Highlight groups for styling
+			vim.api.nvim_set_hl(0, "AlphaHeader", { fg = "#cba6f7" })  -- Mauve
+			vim.api.nvim_set_hl(0, "AlphaFooter", { fg = "#6c7086", italic = true })  -- Overlay0
 			
 			alpha.setup(dashboard.opts)
 		end,
@@ -286,24 +355,32 @@ return {
 					numbers = "ordinal",
 					close_command = "bdelete! %d",
 					indicator = { icon = "▎", style = "underline" },
-					buffer_close_icon = "",
+					buffer_close_icon = "󰅖",
 					modified_icon = "●",
-					close_icon = "",
+					close_icon = "󰅙",
 					left_trunc_marker = "",
 					right_trunc_marker = "",
 					diagnostics = "nvim_lsp",
 					diagnostics_indicator = function(count, level)
-						local icon = level == "error" and " " or " "
-						return " " .. icon .. count
+						local icon = level == "error" and "" or level == "warning" and "" or ""
+						return " " .. icon .. " " .. count
 					end,
-					separator_style = "slant",
+					separator_style = "padded_slant",  -- More premium look
 					offsets = {
-						{ filetype = "NvimTree", text = "File Explorer", text_align = "center", separator = true },
+						{ filetype = "NvimTree", text = "  File Explorer", text_align = "left", separator = true },
+						{ filetype = "undotree", text = "󰕌 Undo Tree", text_align = "center", separator = true },
 					},
-					show_buffer_close_icons = false,
+					show_buffer_close_icons = true,
 					show_close_icon = false,
-					enforce_regular_tabs = true,
+					enforce_regular_tabs = false,
 					always_show_bufferline = true,
+					themable = true,
+					hover = {
+						enabled = true,
+						delay = 200,
+						reveal = { "close" },
+					},
+					sort_by = "insert_after_current",
 				},
 				highlights = highlights,
 			})
@@ -1188,6 +1265,8 @@ return {
 				{ "<leader>l", group = "LSP", icon = { icon = "", color = "purple" } },
 				{ "<leader>z", group = "Zen", icon = { icon = "🧘", color = "cyan" } },
 				{ "<leader>R", group = "REST", icon = { icon = "󰒍", color = "yellow" } },
+				{ "<leader>p", group = "Pick/Breadcrumb", icon = { icon = "", color = "purple" } },
+				{ "<leader>a", group = "AI/Add", icon = { icon = "󰚩", color = "cyan" } },
 			})
 
 			-- Theme keymaps (standalone)
@@ -1376,6 +1455,7 @@ return {
 		config = function()
 			require("noice").setup({
 				lsp = {
+					progress = { enabled = false }, -- Disabled: using fidget.nvim instead
 					-- Disable signature help (we use lsp_signature.nvim instead)
 					signature = { enabled = false },
 					-- Disable hover (we use native or lsp_signature)
@@ -1391,8 +1471,18 @@ return {
 					bottom_search = true, -- use a classic bottom cmdline for search
 					command_palette = true, -- position the cmdline and popupmenu together
 					long_message_to_split = true, -- long messages will be sent to a split
-					inc_rename = false, -- enables an input dialog for inc-rename.nvim
-					lsp_doc_border = false, -- add a border to hover docs and signature help
+					inc_rename = true, -- enables an input dialog for inc-rename.nvim
+					lsp_doc_border = true, -- add a border to hover docs and signature help
+				},
+				views = {
+					cmdline_popup = {
+						border = { style = "rounded", padding = { 0, 1 } },
+						win_options = { winhighlight = "Normal:Normal,FloatBorder:FloatBorder" },
+					},
+					popupmenu = {
+						border = { style = "rounded", padding = { 0, 1 } },
+						win_options = { winhighlight = "Normal:Normal,FloatBorder:FloatBorder" },
+					},
 				},
 			})
 		end,
@@ -1508,6 +1598,381 @@ return {
 			vim.g.VM_theme = "purplegray"
 		end,
 		event = "BufReadPost",
+	},
+
+	-- ============================================
+	-- UI POLISH ENHANCEMENTS (Added 2026-01-31)
+	-- ============================================
+
+	-- 0. DRESSING (Beautiful UI Prompts)
+	{
+		"stevearc/dressing.nvim",
+		event = "VeryLazy",
+		opts = {
+			input = {
+				enabled = true,
+				default_prompt = "➤ ",
+				win_options = {
+					winblend = 0,
+					winhighlight = "Normal:Normal,NormalNC:Normal",
+				},
+				border = "rounded",
+				relative = "cursor",
+				prefer_width = 40,
+				min_width = 20,
+				mappings = {
+					n = {
+						["<Esc>"] = "Close",
+						["<CR>"] = "Confirm",
+					},
+					i = {
+						["<C-c>"] = "Close",
+						["<CR>"] = "Confirm",
+						["<C-p>"] = "HistoryPrev",
+						["<C-n>"] = "HistoryNext",
+					},
+				},
+			},
+			select = {
+				enabled = true,
+				backend = { "telescope", "builtin" },
+				builtin = {
+					border = "rounded",
+					relative = "editor",
+					win_options = {
+						winblend = 0,
+						winhighlight = "Normal:Normal,NormalNC:Normal",
+					},
+				},
+				telescope = require("telescope.themes").get_dropdown({
+					borderchars = {
+						{ "─", "│", "─", "│", "┌", "┐", "┘", "└" },
+						prompt = { "─", "│", " ", "│", "┌", "┐", "│", "│" },
+						results = { "─", "│", "─", "│", "├", "┤", "┘", "└" },
+						preview = { "─", "│", "─", "│", "┌", "┐", "┘", "└" },
+					},
+				}),
+			},
+		},
+	},
+
+	-- 1. DROPBAR (Better Breadcrumbs - VSCode-like)
+	{
+		"Bekaboo/dropbar.nvim",
+		event = { "BufReadPost", "BufNewFile" },
+		dependencies = {
+			"nvim-telescope/telescope-fzf-native.nvim",
+		},
+		config = function()
+			require("dropbar").setup({
+				icons = {
+					enable = true,
+					kinds = {
+						use_devicons = true,
+						symbols = {
+							Array = "󰅪 ",
+							Boolean = " ",
+							Class = " ",
+							Color = "󰏘 ",
+							Constant = "󰏿 ",
+							Constructor = " ",
+							Enum = " ",
+							EnumMember = " ",
+							Event = " ",
+							Field = " ",
+							File = "󰈙 ",
+							Folder = "󰉋 ",
+							Function = "󰊕 ",
+							Interface = " ",
+							Key = "󰌋 ",
+							Keyword = "󰌋 ",
+							Method = "󰆧 ",
+							Module = " ",
+							Namespace = "󰌗 ",
+							Null = "󰟢 ",
+							Number = "󰎠 ",
+							Object = "󰅩 ",
+							Operator = "󰆕 ",
+							Package = " ",
+							Property = "󰜢 ",
+							Reference = "󰈇 ",
+							Snippet = " ",
+							String = " ",
+							Struct = " ",
+							Text = "󰉿 ",
+							TypeParameter = "󰊄 ",
+							Unit = " ",
+							Value = "󰎠 ",
+							Variable = " ",
+						},
+					},
+					ui = {
+						bar = {
+							separator = "  ",
+							extends = "…",
+						},
+						menu = {
+							separator = " ",
+							indicator = " ",
+						},
+					},
+				},
+				bar = {
+					hover = true,
+					sources = function(buf, _)
+						local sources = require("dropbar.sources")
+						local utils = require("dropbar.utils")
+						if vim.bo[buf].ft == "markdown" then
+							return { sources.markdown }
+						end
+						if vim.bo[buf].buftype == "terminal" then
+							return { sources.terminal }
+						end
+						return {
+							sources.path,
+							utils.source.fallback({
+								sources.lsp,
+								sources.treesitter,
+							}),
+						}
+					end,
+					padding = { left = 1, right = 1 },
+				},
+				menu = {
+					quick_navigation = true,
+					entry = {
+						padding = { left = 1, right = 1 },
+					},
+					win_configs = {
+						border = "rounded",
+					},
+				},
+			})
+			-- Keymap to toggle dropbar menu
+			vim.keymap.set("n", "<leader>pb", function()
+				require("dropbar.api").pick()
+			end, { desc = "Pick Breadcrumb" })
+		end,
+	},
+
+	-- 2. MINI.ANIMATE (Smooth Animations)
+	{
+		"echasnovski/mini.animate",
+		event = "VeryLazy",
+		config = function()
+			local animate = require("mini.animate")
+			animate.setup({
+				cursor = {
+					enable = true,
+					timing = animate.gen_timing.linear({ duration = 80, unit = "total" }),
+				},
+				scroll = {
+					enable = true,
+					timing = animate.gen_timing.linear({ duration = 100, unit = "total" }),
+				},
+				resize = {
+					enable = true,
+					timing = animate.gen_timing.linear({ duration = 80, unit = "total" }),
+				},
+				open = { enable = false }, -- Can cause issues with some plugins
+				close = { enable = false },
+			})
+		end,
+	},
+
+	-- 3. MINI.INDENTSCOPE (Animated Indent Scope)
+	{
+		"echasnovski/mini.indentscope",
+		event = { "BufReadPost", "BufNewFile" },
+		config = function()
+			require("mini.indentscope").setup({
+				symbol = "│",
+				options = { try_as_border = true },
+				draw = {
+					delay = 50,
+					animation = require("mini.indentscope").gen_animation.linear({
+						duration = 50,
+						unit = "total",
+					}),
+					priority = 2,
+				},
+			})
+			-- Disable for certain filetypes
+			vim.api.nvim_create_autocmd("FileType", {
+				pattern = {
+					"help", "alpha", "dashboard", "neo-tree", "Trouble", "trouble",
+					"lazy", "mason", "notify", "toggleterm", "lazyterm", "NvimTree",
+				},
+				callback = function()
+					vim.b.miniindentscope_disable = true
+				end,
+			})
+		end,
+	},
+
+	-- 4. NVIM-SCROLLBAR (Scrollbar with Diagnostics)
+	{
+		"petertriho/nvim-scrollbar",
+		event = "BufReadPost",
+		dependencies = {
+			"kevinhwang91/nvim-hlslens",
+			"lewis6991/gitsigns.nvim",
+		},
+		config = function()
+			local colors = require("catppuccin.palettes").get_palette("mocha")
+			require("scrollbar").setup({
+				handle = {
+					color = colors.surface1,
+					blend = 30,
+				},
+				marks = {
+					Search = { color = colors.yellow },
+					Error = { color = colors.red },
+					Warn = { color = colors.peach },
+					Info = { color = colors.blue },
+					Hint = { color = colors.teal },
+					Misc = { color = colors.mauve },
+					GitAdd = { color = colors.green },
+					GitChange = { color = colors.yellow },
+					GitDelete = { color = colors.red },
+				},
+				excluded_filetypes = {
+					"prompt", "TelescopePrompt", "noice", "notify",
+					"alpha", "dashboard", "NvimTree", "lazy", "mason",
+				},
+				handlers = {
+					cursor = true,
+					diagnostic = true,
+					gitsigns = true,
+					handle = true,
+					search = true,
+				},
+			})
+			require("scrollbar.handlers.gitsigns").setup()
+			require("scrollbar.handlers.search").setup()
+		end,
+	},
+
+	-- 5. STATUSCOL (Better Status Column)
+	{
+		"luukvbaal/statuscol.nvim",
+		event = "BufReadPost",
+		config = function()
+			local builtin = require("statuscol.builtin")
+			require("statuscol").setup({
+				relculright = true,
+				segments = {
+					{ text = { builtin.foldfunc }, click = "v:lua.ScFa" },
+					{ text = { "%s" }, click = "v:lua.ScSa" },
+					{
+						text = { builtin.lnumfunc, " " },
+						condition = { true, builtin.not_empty },
+						click = "v:lua.ScLa",
+					},
+				},
+			})
+		end,
+	},
+
+	-- 6. MODES (Mode-based Line Highlights)
+	{
+		"mvllow/modes.nvim",
+		event = "BufReadPost",
+		config = function()
+			require("modes").setup({
+				colors = {
+					copy = "#f5c359",
+					delete = "#f38ba8",
+					insert = "#a6e3a1",
+					visual = "#cba6f7",
+				},
+				line_opacity = 0.25,
+				set_cursor = true,
+				set_cursorline = true,
+				set_number = true,
+				ignore_filetypes = { "NvimTree", "TelescopePrompt", "alpha", "lazy", "mason" },
+			})
+		end,
+	},
+
+	-- 7. WINDOWS (Window Animations & Auto-resize)
+	{
+		"anuvyklack/windows.nvim",
+		event = "WinNew",
+		dependencies = {
+			"anuvyklack/middleclass",
+			"anuvyklack/animation.nvim",
+		},
+		config = function()
+			vim.o.winwidth = 10
+			vim.o.winminwidth = 10
+			vim.o.equalalways = false
+			require("windows").setup({
+				autowidth = {
+					enable = true,
+					winwidth = 5,
+					filetype = {
+						help = 2,
+					},
+				},
+				ignore = {
+					buftype = { "quickfix" },
+					filetype = { "NvimTree", "neo-tree", "undotree", "gundo" },
+				},
+				animation = {
+					enable = true,
+					duration = 150,
+					fps = 60,
+					easing = "in_out_sine",
+				},
+			})
+			vim.keymap.set("n", "<C-w>z", "<Cmd>WindowsMaximize<CR>", { desc = "Maximize Window" })
+			vim.keymap.set("n", "<C-w>_", "<Cmd>WindowsMaximizeVertically<CR>", { desc = "Max Vertically" })
+			vim.keymap.set("n", "<C-w>|", "<Cmd>WindowsMaximizeHorizontally<CR>", { desc = "Max Horizontally" })
+			vim.keymap.set("n", "<C-w>=", "<Cmd>WindowsEqualize<CR>", { desc = "Equalize Windows" })
+		end,
+	},
+
+	-- 8. FIDGET (LSP Progress Indicator)
+	{
+		"j-hui/fidget.nvim",
+		event = "LspAttach",
+		opts = {
+			progress = {
+				poll_rate = 100,
+				suppress_on_insert = true,
+				ignore_done_already = false,
+				ignore_empty_message = false,
+				display = {
+					render_limit = 5,
+					done_ttl = 2,
+					done_icon = "✔",
+					done_style = "Constant",
+					progress_style = "WarningMsg",
+					group_style = "Title",
+					icon_style = "Question",
+					priority = 30,
+				},
+			},
+			notification = {
+				poll_rate = 10,
+				filter = vim.log.levels.INFO,
+				history_size = 128,
+				override_vim_notify = false,
+				window = {
+					normal_hl = "Comment",
+					winblend = 0,
+					border = "rounded",
+					zindex = 45,
+					max_width = 0,
+					max_height = 0,
+					x_padding = 1,
+					y_padding = 0,
+					align = "bottom",
+					relative = "editor",
+				},
+			},
+		},
 	},
 
 	-- ============================================
