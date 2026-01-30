@@ -1142,8 +1142,10 @@ return {
 		end,
 	},
 
+	-- neoscroll - DISABLED (scroll animation causes lag)
 	{
 		"karb94/neoscroll.nvim",
+		enabled = false,  -- Disable scroll animations for better typing performance
 		event = "VeryLazy",
 		config = function()
 			require("neoscroll").setup({
@@ -1755,26 +1757,18 @@ return {
 		end,
 	},
 
-	-- 2. MINI.ANIMATE (Smooth Animations)
+	-- 2. MINI.ANIMATE - DISABLED (animations cause cursor/scroll lag)
 	{
 		"echasnovski/mini.animate",
+		enabled = false,  -- Disable all animations for better typing performance
 		event = "VeryLazy",
 		config = function()
 			local animate = require("mini.animate")
 			animate.setup({
-				cursor = {
-					enable = true,
-					timing = animate.gen_timing.linear({ duration = 80, unit = "total" }),
-				},
-				scroll = {
-					enable = true,
-					timing = animate.gen_timing.linear({ duration = 100, unit = "total" }),
-				},
-				resize = {
-					enable = true,
-					timing = animate.gen_timing.linear({ duration = 80, unit = "total" }),
-				},
-				open = { enable = false }, -- Can cause issues with some plugins
+				cursor = { enable = false },
+				scroll = { enable = false },
+				resize = { enable = false },
+				open = { enable = false },
 				close = { enable = false },
 			})
 		end,
@@ -1920,7 +1914,7 @@ return {
 					filetype = { "NvimTree", "neo-tree", "undotree", "gundo" },
 				},
 				animation = {
-					enable = true,
+					enable = false,  -- DISABLED: window animation causes lag
 					duration = 150,
 					fps = 60,
 					easing = "in_out_sine",
