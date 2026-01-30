@@ -715,16 +715,8 @@ return {
 
 			require("nvim-dap-virtual-text").setup()
 
-			-- Java adapter configuration
-			dap.configurations.java = {
-				{
-					type = "java",
-					request = "attach",
-					name = "Debug (Attach) - Remote",
-					hostName = "127.0.0.1",
-					port = 5005,
-				},
-			}
+			-- Java adapter configuration is handled by nvim-java automatically
+			-- dap.configurations.java = { ... } (Removed to prevent conflict)
 
 			-- Auto open/close dapui (use flat listener names: after.event_*, before.event_*)
 			dap.listeners.after.event_initialized["dapui_config"] = function() dapui.open() end
@@ -1140,5 +1132,176 @@ return {
 		keys = {
 			{ "<leader>mp", "<cmd>MarkdownPreviewToggle<cr>", desc = "Markdown Preview" },
 		},
+	},
+	-- Previous plugin end was here, continuing list...
+
+	-- ============================================
+	-- PRIMEAGEN RECOMMENDED ENHANCEMENTS
+	-- ============================================
+	
+	-- 1. NEOTEST (Testing)
+	{
+		"nvim-neotest/neotest",
+		dependencies = {
+			"nvim-neotest/nvim-nio",
+			"nvim-lua/plenary.nvim",
+			"antoinemadec/FixCursorHold.nvim",
+			"nvim-treesitter/nvim-treesitter",
+			"rcasia/neotest-java",
+		},
+		keys = {
+			{ "<leader>tn", function() require("neotest").run.run() end, desc = "Run Nearest Test" },
+			{ "<leader>tf", function() require("neotest").run.run(vim.fn.expand("%")) end, desc = "Run File Tests" },
+			{ "<leader>ts", function() require("neotest").summary.toggle() end, desc = "Toggle Test Summary" },
+			{ "<leader>to", function() require("neotest").output.open({ enter = true }) end, desc = "Show Test Output" },
+			{ "<leader>td", function() require("neotest").run.run({ strategy = "dap" }) end, desc = "Debug Nearest Test" },
+		},
+		config = function()
+			require("neotest").setup({
+				adapters = {
+					require("neotest-java")({
+						-- Validates that junit is on the classpath
+						ignore_wrapper = false,
+					}),
+				},
+			})
+		end,
+	},
+
+	-- 2. REFACTORING.NVIM
+	{
+		"ThePrimeagen/refactoring.nvim",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"nvim-treesitter/nvim-treesitter",
+		},
+		keys = {
+			{ "<leader>re", ":Refactor extract ", mode = "x", desc = "Extract Function" },
+			{ "<leader>rf", ":Refactor extract_to_file ", mode = "x", desc = "Extract to File" },
+			{ "<leader>rv", ":Refactor extract_var ", mode = "x", desc = "Extract Variable" },
+			{ "<leader>ri", ":Refactor inline_var", mode = { "n", "x" }, desc = "Inline Variable" },
+			{ "<leader>rb", ":Refactor extract_block", mode = "n", desc = "Extract Block" },
+			{ "<leader>rbf", ":Refactor extract_block_to_file", mode = "n", desc = "Extract Block to File" },
+		},
+		config = function()
+			require("refactoring").setup({})
+		end,
+	},
+
+	-- 3. UNDOTREE
+	{
+		"mbbill/undotree",
+		cmd = "UndotreeToggle",
+		keys = {
+			{ "<leader>u", vim.cmd.UndotreeToggle, desc = "Undo Tree" },
+		},
+	},
+
+	-- 4. VIM-DADBOD (Database)
+	{
+		"kristijanhusak/vim-dadbod-ui",
+		dependencies = {
+			{ "tpope/vim-dadbod", lazy = true },
+			{ "kristijanhusak/vim-dadbod-completion", ft = { "sql", "mysql", "plsql" }, lazy = true },
+		},
+		cmd = {
+			"DBUI",
+			"DBUIToggle",
+			"DBUIAddConnection",
+			"DBUIFindBuffer",
+		},
+		init = function()
+			-- Your DBUI configuration
+			vim.g.db_ui_use_nerd_fonts = 1
+		end,
+		keys = {
+			{ "<leader>D", "<cmd>DBUIToggle<cr>", desc = "Toggle DB UI" },
+		},
+	},
+	-- Continuing list...
+
+	-- ============================================
+	-- LEVEL 2 ENHANCEMENTS (Productivity)
+	-- ============================================
+
+	-- 1. AI AUTOCOMPLETE (Codeium - Disabled by Default)
+	{
+		"Exafunction/codeium.vim",
+		event = "BufEnter",
+		config = function()
+			-- Start DISABLED (User preference)
+			vim.g.codeium_enabled = false
+			-- Disable default bindings to avoid conflicts
+			vim.g.codeium_disable_bindings = 1
+
+			-- Accept keymap (only works when enabled)
+			vim.keymap.set("i", "<C-g>", function() return vim.fn["codeium#Accept"]() end, { expr = true, silent = true })
+			vim.keymap.set("i", "<C-;>", function() return vim.fn["codeium#CycleCompletions"](1) end, { expr = true, silent = true })
+
+			-- Toggle Keymap
+			vim.keymap.set("n", "<leader>ai", function()
+				vim.g.codeium_enabled = not vim.g.codeium_enabled
+				if vim.g.codeium_enabled then
+					vim.cmd("CodeiumEnable")
+					vim.notify("🤖 AI Autocomplete ON", vim.log.levels.INFO)
+				else
+					vim.cmd("CodeiumDisable")
+					vim.notify("🤖 AI Autocomplete OFF", vim.log.levels.WARN)
+				end
+			end, { desc = "Toggle AI" })
+		end,
+	},
+
+	-- 2. SPECTRE (Search & Replace)
+	{
+		"nvim-pack/nvim-spectre",
+		dependencies = { "nvim-lua/plenary.nvim" },
+		keys = {
+			{ "<leader>S", function() require("spectre").toggle() end, desc = "Spectre (Replace)" },
+			{ "<leader>sw", function() require("spectre").open_visual({select_word=true}) end, desc = "Spectre (Word)" },
+			{ "<leader>sf", function() require("spectre").open_file_search({select_word=true}) end, desc = "Spectre (File)" },
+		},
+	},
+
+	-- 3. TODO COMMENTS
+	{
+		"folke/todo-comments.nvim",
+		dependencies = { "nvim-lua/plenary.nvim" },
+		event = { "BufReadPost", "BufNewFile" },
+		config = function()
+			require("todo-comments").setup()
+			vim.keymap.set("n", "]t", function() require("todo-comments").jump_next() end, { desc = "Next Todo" })
+			vim.keymap.set("n", "[t", function() require("todo-comments").jump_prev() end, { desc = "Prev Todo" })
+			vim.keymap.set("n", "<leader>st", "<cmd>TodoTelescope<cr>", { desc = "Search Todos" })
+		end,
+	},
+
+	-- 4. NOICE (Modern UI)
+	{
+		"folke/noice.nvim",
+		event = "VeryLazy",
+		dependencies = {
+			"MunifTanjim/nui.nvim",
+			"rcarriga/nvim-notify",
+		},
+		config = function()
+			require("noice").setup({
+				lsp = {
+					-- override markdown rendering so that **cmp** and other plugins use Treesitter
+					override = {
+						["vim.lsp.util.convert_input_to_markdown_lines"] = true,
+						["vim.lsp.util.stylize_markdown"] = true,
+						["cmp.entry.get_documentation"] = true,
+					},
+				},
+				presets = {
+					bottom_search = true, -- use a classic bottom cmdline for search
+					command_palette = true, -- position the cmdline and popupmenu together
+					long_message_to_split = true, -- long messages will be sent to a split
+					inc_rename = false, -- enables an input dialog for inc-rename.nvim
+					lsp_doc_border = false, -- add a border to hover docs and signature help
+				},
+			})
+		end,
 	},
 }
