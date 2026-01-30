@@ -68,6 +68,88 @@ return {
 	{ "rebelot/kanagawa.nvim", lazy = true },
 
 	-- ============================================
+	-- ADDITIONAL THEMES (20+ Popular Themes)
+	-- ============================================
+	
+	-- Tokyo Night (VSCode-like)
+	{ "folke/tokyonight.nvim", lazy = true, priority = 1000 },
+	
+	-- Gruvbox (Classic warm retro)
+	{ "ellisonleao/gruvbox.nvim", lazy = true, priority = 1000 },
+	
+	-- One Dark (Atom-style)
+	{ "navarasu/onedark.nvim", lazy = true },
+	
+	-- Nord (Arctic, minimal)
+	{ "shaunsingh/nord.nvim", lazy = true },
+	
+	-- Dracula (Dark purple)
+	{ "Mofiqul/dracula.nvim", lazy = true },
+	
+	-- Nightfox (Collection: nightfox, dayfox, dawnfox, duskfox, nordfox, terafox, carbonfox)
+	{ "EdenEast/nightfox.nvim", lazy = true },
+	
+	-- Everforest (Soft green)
+	{ "sainnhe/everforest", lazy = true },
+	
+	-- Sonokai (Monokai Pro-like)
+	{ "sainnhe/sonokai", lazy = true },
+	
+	-- Edge (Modern)
+	{ "sainnhe/edge", lazy = true },
+	
+	-- Material (Material Design)
+	{ "marko-cerovac/material.nvim", lazy = true },
+	
+	-- GitHub Theme (GitHub-style)
+	{ "projekt0n/github-nvim-theme", lazy = true },
+	
+	-- Onedark Pro (Enhanced One Dark)
+	{ "olimorris/onedarkpro.nvim", lazy = true },
+	
+	-- Nightfly (Miami Vice vibes)
+	{ "bluz71/vim-nightfly-colors", name = "nightfly", lazy = true },
+	
+	-- Moonfly (Dark, muted)
+	{ "bluz71/vim-moonfly-colors", name = "moonfly", lazy = true },
+	
+	-- Oxocarbon (IBM Carbon Design)
+	{ "nyoom-engineering/oxocarbon.nvim", lazy = true },
+	
+	-- Ayu (Elegant minimal)
+	{ "Shatur/neovim-ayu", lazy = true },
+	
+	-- Monokai Pro
+	{ "loctvl842/monokai-pro.nvim", lazy = true },
+	
+	-- Solarized (Classic balanced)
+	{ "maxmx03/solarized.nvim", lazy = true },
+	
+	-- Cyberdream (Neon futuristic)
+	{ "scottmckendry/cyberdream.nvim", lazy = true },
+	
+	-- Melange (Warm, readable)
+	{ "savq/melange-nvim", lazy = true },
+	
+	-- Zenbones (Collection of minimal themes)
+	{ "mcchrish/zenbones.nvim", lazy = true, dependencies = { "rktjmp/lush.nvim" } },
+	
+	-- Fluoromachine (Synthwave)
+	{ "maxmx03/fluoromachine.nvim", lazy = true },
+	
+	-- Poimandres (VSCode theme port)
+	{ "olivercederborg/poimandres.nvim", lazy = true },
+	
+	-- Vscode Dark+
+	{ "Mofiqul/vscode.nvim", lazy = true },
+	
+	-- Bamboo (Natural green-brown)
+	{ "ribru17/bamboo.nvim", lazy = true },
+	
+	-- Modus (High contrast accessibility)
+	{ "miikanissi/modus-themes.nvim", lazy = true },
+
+	-- ============================================
 	-- DEPENDENCIES / UTILITIES
 	-- ============================================
 	{ "nvim-lua/plenary.nvim", priority = 999 },
@@ -1089,21 +1171,23 @@ return {
 			})
 
 			wk.add({
-				{ "<leader>r", group = "Run", icon = { icon = "", color = "green" } },
+				{ "<leader>r", group = "Run/Refactor", icon = { icon = "", color = "green" } },
 				{ "<leader>rr", desc = "🔥 Run Java Main", icon = { icon = "", color = "red" } },
-				{ "<leader>t", group = "Theme/Toggle", icon = { icon = "", color = "cyan" } },
+				{ "<leader>t", group = "Theme/Toggle/Test", icon = { icon = "", color = "cyan" } },
 				{ "<leader>h", group = "Harpoon", icon = { icon = "⚓", color = "blue" } },
 				{ "<leader>g", group = "Git", icon = { icon = "", color = "orange" } },
-				{ "<leader>S", group = "Session", icon = { icon = "", color = "yellow" } },
+				{ "<leader>S", group = "Session/Spectre", icon = { icon = "", color = "yellow" } },
 				{ "<leader>j", group = "Java", icon = { icon = "☕", color = "red" } },
 				{ "<leader>d", group = "Debug", icon = { icon = "", color = "red" } },
 				{ "<leader>e", group = "Explorer", icon = { icon = "", color = "blue" } },
 				{ "<leader>x", group = "Diagnostics", icon = { icon = "", color = "red" } },
 				{ "<leader>c", group = "Code", icon = { icon = "", color = "purple" } },
 				{ "<leader>b", group = "Buffer", icon = { icon = "", color = "blue" } },
-				{ "<leader>f", group = "Find", icon = { icon = "", color = "green" } },
-				{ "<leader>s", group = "Split", icon = { icon = "", color = "blue" } },
+				{ "<leader>f", group = "Find/Files", icon = { icon = "", color = "green" } },
+				{ "<leader>s", group = "Split/Search", icon = { icon = "", color = "blue" } },
 				{ "<leader>l", group = "LSP", icon = { icon = "", color = "purple" } },
+				{ "<leader>z", group = "Zen", icon = { icon = "🧘", color = "cyan" } },
+				{ "<leader>R", group = "REST", icon = { icon = "󰒍", color = "yellow" } },
 			})
 
 			-- Theme keymaps (standalone)
@@ -1420,6 +1504,481 @@ return {
 			vim.g.VM_theme = "purplegray"
 		end,
 		event = "BufReadPost",
+	},
+
+	-- ============================================
+	-- NEW ENHANCEMENTS (Added 2026-01-31)
+	-- ============================================
+
+	-- 1. HLSLENS (Enhanced Search Highlighting)
+	{
+		"kevinhwang91/nvim-hlslens",
+		event = "BufReadPost",
+		config = function()
+			require("hlslens").setup({
+				calm_down = true,
+				nearest_only = true,
+				nearest_float_when = "always",
+			})
+			local map = vim.keymap.set
+			local opts = { noremap = true, silent = true }
+			map("n", "n", [[<Cmd>execute('normal! ' . v:count1 . 'n')<CR><Cmd>lua require('hlslens').start()<CR>zz]], opts)
+			map("n", "N", [[<Cmd>execute('normal! ' . v:count1 . 'N')<CR><Cmd>lua require('hlslens').start()<CR>zz]], opts)
+			map("n", "*", [[*<Cmd>lua require('hlslens').start()<CR>]], opts)
+			map("n", "#", [[#<Cmd>lua require('hlslens').start()<CR>]], opts)
+			map("n", "g*", [[g*<Cmd>lua require('hlslens').start()<CR>]], opts)
+			map("n", "g#", [[g#<Cmd>lua require('hlslens').start()<CR>]], opts)
+		end,
+	},
+
+	-- 2. COLORIZER (Inline Color Preview)
+	{
+		"NvChad/nvim-colorizer.lua",
+		event = "BufReadPost",
+		config = function()
+			require("colorizer").setup({
+				filetypes = { "*" },
+				user_default_options = {
+					RGB = true,
+					RRGGBB = true,
+					names = false,
+					RRGGBBAA = true,
+					AARRGGBB = true,
+					rgb_fn = true,
+					hsl_fn = true,
+					css = true,
+					css_fn = true,
+					tailwind = true,
+					mode = "background",
+					virtualtext = "■",
+				},
+			})
+		end,
+	},
+
+	-- 3. INC-RENAME (Live Rename Preview)
+	{
+		"smjonas/inc-rename.nvim",
+		cmd = "IncRename",
+		keys = {
+			{
+				"<leader>rn",
+				function()
+					return ":IncRename " .. vim.fn.expand("<cword>")
+				end,
+				expr = true,
+				desc = "Inc Rename",
+			},
+		},
+		config = function()
+			require("inc_rename").setup({
+				input_buffer_type = "dressing",
+			})
+		end,
+	},
+
+	-- 4. LSP SIGNATURE (Function Signature Help)
+	{
+		"ray-x/lsp_signature.nvim",
+		event = "LspAttach",
+		config = function()
+			require("lsp_signature").setup({
+				bind = true,
+				hint_enable = true,
+				hint_prefix = "󰏫 ",
+				hint_scheme = "String",
+				hi_parameter = "LspSignatureActiveParameter",
+				floating_window = true,
+				floating_window_above_cur_line = true,
+				floating_window_off_x = 1,
+				floating_window_off_y = 0,
+				fix_pos = false,
+				always_trigger = false,
+				auto_close_after = nil,
+				extra_trigger_chars = {},
+				zindex = 200,
+				padding = "",
+				transparency = nil,
+				shadow_blend = 36,
+				shadow_guibg = "Black",
+				timer_interval = 200,
+				toggle_key = "<M-x>",
+				select_signature_key = "<M-n>",
+				move_cursor_key = nil,
+				handler_opts = {
+					border = "rounded",
+				},
+			})
+		end,
+	},
+
+	-- 5. MINI.AI (Advanced Text Objects)
+	{
+		"echasnovski/mini.ai",
+		event = "VeryLazy",
+		config = function()
+			local ai = require("mini.ai")
+			ai.setup({
+				n_lines = 500,
+				custom_textobjects = {
+					-- Whole buffer
+					g = function()
+						local from = { line = 1, col = 1 }
+						local to = { line = vim.fn.line("$"), col = math.max(vim.fn.getline("$"):len(), 1) }
+						return { from = from, to = to }
+					end,
+					-- Function call with treesitter
+					o = ai.gen_spec.treesitter({
+						a = { "@block.outer", "@conditional.outer", "@loop.outer" },
+						i = { "@block.inner", "@conditional.inner", "@loop.inner" },
+					}, {}),
+					f = ai.gen_spec.treesitter({ a = "@function.outer", i = "@function.inner" }, {}),
+					c = ai.gen_spec.treesitter({ a = "@class.outer", i = "@class.inner" }, {}),
+				},
+			})
+		end,
+	},
+
+	-- 6. MINI.FILES (Miller-style File Explorer)
+	{
+		"echasnovski/mini.files",
+		keys = {
+			{
+				"<leader>fm",
+				function()
+					require("mini.files").open(vim.api.nvim_buf_get_name(0), true)
+				end,
+				desc = "Mini Files (Current)",
+			},
+			{
+				"<leader>fM",
+				function()
+					require("mini.files").open(vim.loop.cwd(), true)
+				end,
+				desc = "Mini Files (CWD)",
+			},
+		},
+		config = function()
+			require("mini.files").setup({
+				windows = {
+					preview = true,
+					width_focus = 30,
+					width_nofocus = 15,
+					width_preview = 40,
+				},
+				options = {
+					permanent_delete = false,
+					use_as_default_explorer = false,
+				},
+				mappings = {
+					close = "q",
+					go_in = "l",
+					go_in_plus = "<CR>",
+					go_out = "h",
+					go_out_plus = "H",
+					reset = "<BS>",
+					reveal_cwd = "@",
+					show_help = "g?",
+					synchronize = "=",
+					trim_left = "<",
+					trim_right = ">",
+				},
+			})
+		end,
+	},
+
+	-- 7. ZEN MODE (Distraction-free Coding)
+	{
+		"folke/zen-mode.nvim",
+		cmd = "ZenMode",
+		keys = {
+			{ "<leader>zz", "<cmd>ZenMode<cr>", desc = "Zen Mode" },
+		},
+		opts = {
+			window = {
+				backdrop = 0.95,
+				width = 120,
+				height = 1,
+				options = {
+					number = true,
+					relativenumber = true,
+					signcolumn = "no",
+					cursorline = true,
+				},
+			},
+			plugins = {
+				options = {
+					enabled = true,
+					ruler = false,
+					showcmd = false,
+				},
+				twilight = { enabled = true },
+				gitsigns = { enabled = true },
+				tmux = { enabled = true },
+			},
+			on_open = function()
+				vim.notify("🧘 Zen Mode Activated", vim.log.levels.INFO)
+			end,
+			on_close = function()
+				vim.notify("👨‍💻 Back to Work", vim.log.levels.INFO)
+			end,
+		},
+	},
+
+	-- 8. TWILIGHT (Dim Inactive Code)
+	{
+		"folke/twilight.nvim",
+		cmd = { "Twilight", "TwilightEnable", "TwilightDisable" },
+		keys = {
+			{ "<leader>tw", "<cmd>Twilight<cr>", desc = "Toggle Twilight" },
+		},
+		opts = {
+			dimming = {
+				alpha = 0.25,
+				color = { "Normal", "#ffffff" },
+				term_bg = "#000000",
+				inactive = false,
+			},
+			context = 10,
+			treesitter = true,
+			expand = {
+				"function",
+				"method",
+				"table",
+				"if_statement",
+			},
+		},
+	},
+
+	-- 9. SYMBOLS OUTLINE (Code Structure View)
+	{
+		"simrat39/symbols-outline.nvim",
+		cmd = { "SymbolsOutline", "SymbolsOutlineOpen", "SymbolsOutlineClose" },
+		keys = {
+			{ "<leader>co", "<cmd>SymbolsOutline<cr>", desc = "Symbols Outline" },
+		},
+		config = function()
+			require("symbols-outline").setup({
+				highlight_hovered_item = true,
+				show_guides = true,
+				auto_preview = false,
+				position = "right",
+				relative_width = true,
+				width = 25,
+				auto_close = false,
+				show_numbers = false,
+				show_relative_numbers = false,
+				show_symbol_details = true,
+				preview_bg_highlight = "Pmenu",
+				autofold_depth = 2,
+				auto_unfold_hover = true,
+				fold_markers = { "", "" },
+				wrap = false,
+				keymaps = {
+					close = { "<Esc>", "q" },
+					goto_location = "<Cr>",
+					focus_location = "o",
+					hover_symbol = "<C-space>",
+					toggle_preview = "K",
+					rename_symbol = "r",
+					code_actions = "a",
+					fold = "h",
+					unfold = "l",
+					fold_all = "W",
+					unfold_all = "E",
+					fold_reset = "R",
+				},
+				lsp_blacklist = {},
+				symbol_blacklist = {},
+				symbols = {
+					File = { icon = "", hl = "@text.uri" },
+					Module = { icon = "", hl = "@namespace" },
+					Namespace = { icon = "", hl = "@namespace" },
+					Package = { icon = "", hl = "@namespace" },
+					Class = { icon = "𝓒", hl = "@type" },
+					Method = { icon = "ƒ", hl = "@method" },
+					Property = { icon = "", hl = "@method" },
+					Field = { icon = "", hl = "@field" },
+					Constructor = { icon = "", hl = "@constructor" },
+					Enum = { icon = "ℰ", hl = "@type" },
+					Interface = { icon = "ﰮ", hl = "@type" },
+					Function = { icon = "", hl = "@function" },
+					Variable = { icon = "", hl = "@constant" },
+					Constant = { icon = "", hl = "@constant" },
+					String = { icon = "𝓐", hl = "@string" },
+					Number = { icon = "#", hl = "@number" },
+					Boolean = { icon = "⊨", hl = "@boolean" },
+					Array = { icon = "", hl = "@constant" },
+					Object = { icon = "⦿", hl = "@type" },
+					Key = { icon = "🔐", hl = "@type" },
+					Null = { icon = "NULL", hl = "@type" },
+					EnumMember = { icon = "", hl = "@field" },
+					Struct = { icon = "𝓢", hl = "@type" },
+					Event = { icon = "🗲", hl = "@type" },
+					Operator = { icon = "+", hl = "@operator" },
+					TypeParameter = { icon = "𝙏", hl = "@parameter" },
+					Component = { icon = "", hl = "@function" },
+					Fragment = { icon = "", hl = "@constant" },
+				},
+			})
+		end,
+	},
+
+	-- 10. NVIM-BQF (Better Quickfix)
+	{
+		"kevinhwang91/nvim-bqf",
+		ft = "qf",
+		dependencies = {
+			{
+				"junegunn/fzf",
+				build = function()
+					vim.fn["fzf#install"]()
+				end,
+			},
+		},
+		opts = {
+			auto_enable = true,
+			auto_resize_height = true,
+			preview = {
+				win_height = 12,
+				win_vheight = 12,
+				delay_syntax = 80,
+				border_chars = { "┃", "┃", "━", "━", "┏", "┓", "┗", "┛", "█" },
+				show_title = true,
+				should_preview_cb = function(bufnr)
+					local ret = true
+					local bufname = vim.api.nvim_buf_get_name(bufnr)
+					local fsize = vim.fn.getfsize(bufname)
+					if fsize > 100 * 1024 then
+						ret = false
+					elseif bufname:match("^fugitive://") then
+						ret = false
+					end
+					return ret
+				end,
+			},
+			func_map = {
+				open = "<CR>",
+				openc = "o",
+				drop = "O",
+				tabdrop = "",
+				split = "<C-s>",
+				vsplit = "<C-v>",
+				tab = "t",
+				tabb = "T",
+				tabc = "",
+				ptogglemode = "zp",
+				ptoggleitem = "p",
+				ptoggleauto = "P",
+				pscrollup = "<C-b>",
+				pscrolldown = "<C-f>",
+				pscrollorig = "zo",
+				prevfile = "[[",
+				nextfile = "]]",
+				prevhist = "<",
+				nexthist = ">",
+				lastleave = "'\"",
+				stoggleup = "<S-Tab>",
+				stoggledown = "<Tab>",
+				stogglevm = "<Tab>",
+				stogglebuf = "'<Tab>",
+				sclear = "z<Tab>",
+				filter = "zn",
+				filterr = "zN",
+				fzffilter = "zf",
+			},
+			filter = {
+				fzf = {
+					action_for = { ["ctrl-s"] = "split", ["ctrl-t"] = "tab drop" },
+					extra_opts = { "--bind", "ctrl-o:toggle-all", "--prompt", "> " },
+				},
+			},
+		},
+	},
+
+	-- 11. NEOGIT (Full-featured Git Client)
+	{
+		"NeogitOrg/neogit",
+		dependencies = {
+			"nvim-lua/plenary.nvim",
+			"sindrets/diffview.nvim",
+			"nvim-telescope/telescope.nvim",
+		},
+		cmd = "Neogit",
+		keys = {
+			{ "<leader>gn", "<cmd>Neogit<cr>", desc = "Neogit" },
+			{ "<leader>gc", "<cmd>Neogit commit<cr>", desc = "Git Commit" },
+		},
+		config = function()
+			require("neogit").setup({
+				disable_hint = false,
+				disable_context_highlighting = false,
+				disable_signs = false,
+				graph_style = "ascii",
+				git_services = {
+					["github.com"] = "https://github.com/${owner}/${repository}/compare/${branch_name}?expand=1",
+					["bitbucket.org"] = "https://bitbucket.org/${owner}/${repository}/pull-requests/new?source=${branch_name}&t=1",
+					["gitlab.com"] = "https://gitlab.com/${owner}/${repository}/merge_requests/new?merge_request[source_branch]=${branch_name}",
+				},
+				telescope_sorter = function()
+					return require("telescope").extensions.fzf.native_fzf_sorter()
+				end,
+				integrations = {
+					telescope = true,
+					diffview = true,
+				},
+				sections = {
+					untracked = { folded = false, hidden = false },
+					unstaged = { folded = false, hidden = false },
+					staged = { folded = false, hidden = false },
+					stashes = { folded = true, hidden = false },
+					unpulled_upstream = { folded = true, hidden = false },
+					unmerged_upstream = { folded = true, hidden = false },
+					unpulled_pushRemote = { folded = true, hidden = false },
+					unmerged_pushRemote = { folded = true, hidden = false },
+					recent = { folded = true, hidden = false },
+					rebase = { folded = true, hidden = false },
+				},
+				mappings = {
+					finder = {
+						["<cr>"] = "Select",
+						["<c-c>"] = "Close",
+						["<esc>"] = "Close",
+						["<c-n>"] = "Next",
+						["<c-p>"] = "Previous",
+						["<down>"] = "Next",
+						["<up>"] = "Previous",
+						["<tab>"] = "MultiselectToggleNext",
+						["<s-tab>"] = "MultiselectTogglePrevious",
+						["<c-j>"] = "NOP",
+					},
+					status = {
+						["q"] = "Close",
+						["1"] = "Depth1",
+						["2"] = "Depth2",
+						["3"] = "Depth3",
+						["4"] = "Depth4",
+						["<tab>"] = "Toggle",
+						["x"] = "Discard",
+						["s"] = "Stage",
+						["S"] = "StageUnstaged",
+						["<c-s>"] = "StageAll",
+						["u"] = "Unstage",
+						["U"] = "UnstageStaged",
+						["$"] = "CommandHistory",
+						["#"] = "Console",
+						["Y"] = "YankSelected",
+						["<c-r>"] = "RefreshBuffer",
+						["<enter>"] = "GoToFile",
+						["<c-v>"] = "VSplitOpen",
+						["<c-x>"] = "SplitOpen",
+						["<c-t>"] = "TabOpen",
+						["{"] = "GoToPreviousHunkHeader",
+						["}"] = "GoToNextHunkHeader",
+					},
+				},
+			})
+		end,
 	},
 
 }
