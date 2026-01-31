@@ -3,12 +3,12 @@
 
 local M = {}
 
--- Configuration: Add your installed Java versions here
+-- Configuration: Installed Java versions (auto-detected from /usr/lib/jvm/)
 M.java_runtimes = {
-	["21"] = { name = "JavaSE-21", path = "/usr/lib/jvm/java-21-openjdk", default = true },
+	["25"] = { name = "JavaSE-25", path = "/usr/lib/jvm/java-25-openjdk", default = true },
+	["21"] = { name = "JavaSE-21", path = "/usr/lib/jvm/java-21-openjdk" },
 	["17"] = { name = "JavaSE-17", path = "/usr/lib/jvm/java-17-openjdk" },
-	["11"] = { name = "JavaSE-11", path = "/usr/lib/jvm/java-11-openjdk" },
-	["8"] = { name = "JavaSE-1.8", path = "/usr/lib/jvm/java-8-openjdk" },
+	["8"]  = { name = "JavaSE-1.8", path = "/usr/lib/jvm/java-8-openjdk" },
 }
 
 -- Detect Java version from Maven pom.xml
@@ -62,8 +62,8 @@ M.detect_project_java_version = function()
 		return gradle_version
 	end
 
-	vim.notify("⚠️  No Java version detected in build files, using default (21)", vim.log.levels.WARN)
-	return "21"
+	vim.notify("⚠️  No Java version detected in build files, using default (25)", vim.log.levels.WARN)
+	return "25"
 end
 
 -- Get runtime configuration for JDTLS
