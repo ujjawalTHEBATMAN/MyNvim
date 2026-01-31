@@ -33,12 +33,25 @@ if [ -d "$NVIM_DATA_DIR/mason/packages/java-test" ]; then
     rm -rf "$NVIM_DATA_DIR/mason/packages/java-test"
 fi
 
-echo "[2/3] Verifying tree-sitter compiler..."
+
+echo "[3/3] Verifying dependencies..."
 if command -v gcc &> /dev/null; then
     echo "  - GCC is installed."
 else
     echo "  - WARNING: GCC is NOT installed. Treesitter requires a compiler."
     echo "  - Installing base-devel is recommended: sudo pacman -S base-devel"
+fi
+
+if command -v javac &> /dev/null; then
+    echo "  - Java Compiler (javac) is installed."
+else
+    echo "  - WARNING: 'javac' NOT found! Competitive programming plugins need JDK."
+fi
+
+if command -v xclip &> /dev/null || command -v wl-copy &> /dev/null; then
+    echo "  - Clipboard tool (xclip/wl-copy) is installed."
+else
+    echo "  - WARNING: No clipboard tool found! 'leetcode.nvim' needs 'xclip' or 'wl-copy'."
 fi
 
 echo "[3/3] Done!"

@@ -133,14 +133,14 @@ function M.setup()
 		},
 		
 		experimental = {
-			ghost_text = true,
+			ghost_text = false,  -- DISABLED: causes lag on every keystroke
 			native_menu = false,
 		},
 		
 		performance = {
-			trigger_debounce_time = 50,
-			throttle = 50,
-			fetching_timeout = 500,
+			trigger_debounce_time = 150,  -- Increased from 50ms for smoother typing
+			throttle = 100,               -- Increased from 50ms
+			fetching_timeout = 200,       -- Reduced from 500ms
 		},
 	})
 

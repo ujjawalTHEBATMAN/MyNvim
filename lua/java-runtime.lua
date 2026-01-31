@@ -1,4 +1,4 @@
--- lua/jwava-runtime.lua
+-- lua/java-runtime.lua
 -- Automatic Java Runtime Detection & Switching
 
 local M = {}

@@ -279,15 +279,22 @@ return {
 				)
 			end
 
-			dashboard.section.footer.val = footer()
 			dashboard.section.footer.opts.hl = "AlphaFooter"
+			dashboard.section.footer.val = "Loading..."
+			-- Defer footer update so first paint is fast (Enhancement #10)
+			vim.defer_fn(function()
+				dashboard.section.footer.val = footer()
+				pcall(vim.cmd.AlphaRedraw)
+			end, 0)
 
 			-- Update footer after lazy loads
 			vim.api.nvim_create_autocmd("User", {
 				pattern = "LazyVimStarted",
 				callback = function()
-					dashboard.section.footer.val = footer()
-					pcall(vim.cmd.AlphaRedraw)
+					vim.schedule(function()
+						dashboard.section.footer.val = footer()
+						pcall(vim.cmd.AlphaRedraw)
+					end)
 				end,
 			})
 
@@ -398,19 +405,19 @@ return {
 	},
 
 	-- ============================================
-	-- SNACKS (Utilities)
+	-- SNACKS (Utilities) - Lazy for faster startup
 	-- ============================================
 	{
 		"folke/snacks.nvim",
-		priority = 1000,
-		lazy = false,
+		event = "VeryLazy",
+		priority = 999,
 		config = function()
 			require("snacks").setup({
 				bigfile = { enabled = true },
 				notifier = { enabled = true, timeout = 3000 },
 				quickfile = { enabled = true },
 				statuscolumn = { enabled = true },
-				words = { enabled = true, debounce = 200 },
+				words = { enabled = false },  -- DISABLED: word highlighting causes lag
 			})
 		end,
 	},
@@ -518,37 +525,90 @@ return {
 		priority = 95,
 		lazy = false,
 		config = function()
-			require("nvim-treesitter.configs").setup({
-				ensure_installed = {
-					"java", "xml", "yaml", "json", "lua", "vim", "vimdoc",
-					"markdown", "markdown_inline", "bash",
-				},
-				highlight = { enable = true, additional_vim_regex_highlighting = false },
-				indent = { enable = true },
-				textobjects = {
-					select = {
-						enable = true,
-						lookahead = true,
-						keymaps = {
-							["af"] = "@function.outer",
-							["if"] = "@function.inner",
-							["ac"] = "@class.outer",
-							["ic"] = "@class.inner",
+			local ok, configs = pcall(require, "nvim-treesitter.configs")
+			if ok then
+				configs.setup({
+					ensure_installed = {
+						"java", "xml", "yaml", "json", "lua", "vim", "vimdoc",
+						"markdown", "markdown_inline", "bash",
+					},
+					highlight = { enable = true, additional_vim_regex_highlighting = false },
+					indent = { enable = true },
+					textobjects = {
+						select = {
+							enable = true,
+							lookahead = true,
+							keymaps = {
+								["af"] = "@function.outer",
+								["if"] = "@function.inner",
+								["ac"] = "@class.outer",
+								["ic"] = "@class.inner",
+							},
 						},
 					},
-				},
-			})
+				})
+			end
 		end,
 	},
 	{
 		"nvim-treesitter/nvim-treesitter-textobjects",
 		dependencies = { "nvim-treesitter/nvim-treesitter" },
 		event = { "BufReadPost", "BufNewFile" },
+		enabled = true, -- Enabled: textobjects support
+	},
+
+	-- Treesitter Context (Sticky headers)
+	{
+		"nvim-treesitter/nvim-treesitter-context",
+		event = { "BufReadPost", "BufNewFile" },
+		config = function()
+			require("treesitter-context").setup({
+				enable = true,
+				max_lines = 3,
+				min_window_height = 10,
+				line_numbers = true,
+				multiline_threshold = 20,
+				trim_scope = "outer",
+				mode = "cursor",
+				separator = "─",
+				zindex = 20,
+				on_attach = nil,
+			})
+		end,
+	},
+
+	-- Treesitter Autotag (Auto-close HTML/JSX tags)
+	{
+		"windwp/nvim-ts-autotag",
+		event = { "BufReadPost", "BufNewFile" },
+		config = function()
+			require("nvim-ts-autotag").setup({
+				opts = {
+					enable_close = true,
+					enable_rename = true,
+					enable_close_on_slash = false,
+				},
+			})
+		end,
 	},
 
 	-- ============================================
 	-- COMPLETION (CMP)
 	-- ============================================
+
+	-- LazyDev (Better Lua API completion for Neovim config)
+	{
+		"folke/lazydev.nvim",
+		ft = "lua",
+		opts = {
+			library = {
+				{ path = "${3rd}/luv/library", words = { "vim%.uv" } },
+				{ path = "snacks.nvim", words = { "Snacks" } },
+				{ path = "lazy.nvim", words = { "Lazy" } },
+			},
+		},
+	},
+
 	{
 		"hrsh7th/nvim-cmp",
 		event = "InsertEnter",
@@ -598,12 +658,20 @@ return {
 					end, { "i", "s" }),
 				}),
 				sources = cmp.config.sources({
-					{ name = "nvim_lsp", priority = 1000 },
-					{ name = "luasnip", priority = 750 },
+					{ name = "nvim_lsp", priority = 1000, max_item_count = 15 },
+					{ name = "luasnip", priority = 750, max_item_count = 8 },
 				}, {
-					{ name = "buffer", priority = 500 },
-					{ name = "path", priority = 250 },
+					{ name = "buffer", priority = 500, keyword_length = 4, max_item_count = 5 },
+					{ name = "path", priority = 250, keyword_length = 3, max_item_count = 5 },
 				}),
+				performance = {
+					debounce = 150,
+					throttle = 100,
+					fetching_timeout = 200,
+				},
+				experimental = {
+					ghost_text = false,  -- DISABLED: major lag source
+				},
 				window = {
 					completion = cmp.config.window.bordered(),
 					documentation = cmp.config.window.bordered(),
@@ -738,10 +806,11 @@ return {
 	},
 
 	-- ============================================
-	-- JAVA DEVELOPMENT (Enhanced)
+	-- JAVA DEVELOPMENT (Enhanced) - Lazy load for faster startup
 	-- ============================================
 	{
 		"nvim-java/nvim-java",
+		ft = "java",
 		priority = 100,
 		dependencies = {
 			"neovim/nvim-lspconfig",
@@ -790,37 +859,44 @@ return {
 
 			local capabilities = require("cmp_nvim_lsp").default_capabilities()
 
-			-- JDTLS setup with enhanced configuration
-			require("lspconfig").jdtls.setup({
+			-- JDTLS setup with enhanced configuration (Enhancement #2, #5)
+			local lspconfig = require("lspconfig")
+			lspconfig.jdtls.setup({
 				capabilities = capabilities,
 				on_attach = function(client, bufnr)
-					-- Load java-config for additional functionality
+					-- Defer attach work so typing isn't blocked (Enhancement #2)
 					vim.defer_fn(function()
 						local ok, java_config = pcall(require, "java-config")
 						if ok and java_config.on_attach then
 							java_config.on_attach(client, bufnr)
 						end
-					end, 100)
-
-					-- Show active Java version
-					if ok_runtime then
-						local current = java_runtime.get_current_java_version()
-						if current then
-							vim.notify("☕ Using Java " .. current, vim.log.levels.INFO)
+						if ok_runtime then
+							local current = java_runtime.get_current_java_version()
+							if current then
+								vim.notify("☕ Using Java " .. current, vim.log.levels.INFO)
+							end
 						end
-					end
-
-					-- Standard LSP mappings
-					local map = function(keys, func, desc)
-						vim.keymap.set("n", keys, func, { buffer = bufnr, desc = desc })
-					end
-					
-					map("gd", vim.lsp.buf.definition, "Go to Definition")
-					map("K", vim.lsp.buf.hover, "Hover")
-					map("<leader>rn", vim.lsp.buf.rename, "Rename")
-					map("<leader>ca", vim.lsp.buf.code_action, "Code Action")
-					map("<leader>oi", function() vim.lsp.buf.code_action({ context = { only = { "source.organizeImports" } }, apply = true }) end, "Organize Imports")
+						local map = function(keys, func, desc)
+							vim.keymap.set("n", keys, func, { buffer = bufnr, desc = desc })
+						end
+						map("gd", vim.lsp.buf.definition, "Go to Definition")
+						map("K", vim.lsp.buf.hover, "Hover")
+						map("<leader>rn", vim.lsp.buf.rename, "Rename")
+						map("<leader>ca", vim.lsp.buf.code_action, "Code Action")
+						map("<leader>oi", function() vim.lsp.buf.code_action({ context = { only = { "source.organizeImports" } }, apply = true }) end, "Organize Imports")
+						-- Inlay hints: enable only if supported (Enhancement #5 - clean UI)
+						if client.server_capabilities.inlayHintProvider then
+							vim.lsp.inlay_hint.enable(bufnr, true)
+						end
+					end, 150)
 				end,
+				init_options = {
+					extendedClientCapabilities = {
+						classFileContentsSupport = true,
+						overrideMethods = true,
+						resolveAdditionalSymbols = true,
+					},
+				},
 				settings = {
 					java = {
 						autobuild = { enabled = true },
@@ -828,6 +904,11 @@ return {
 							gradle = { enabled = true, wrapper = { enabled = true } },
 							maven = { enabled = true },
 							exclusions = { "**/node_modules/**", "**/.git/**", "**/build/**", "**/target/**" },
+						},
+						inlayHints = {
+							parameterNames = { enabled = "all" },
+							chainIndentation = false,
+							methodChains = false,
 						},
 						contentProvider = { preferred = "fernflower" },
 						saveActions = { organizeImports = true },
@@ -941,6 +1022,39 @@ return {
 	},
 
 	-- ============================================
+	-- LINTING
+	-- ============================================
+	{
+		"mfussenegger/nvim-lint",
+		event = { "BufReadPost", "BufNewFile" },
+		config = function()
+			local lint = require("lint")
+			lint.linters_by_ft = {
+				java = { "checkstyle" },
+				lua = { "luacheck" },
+				python = { "flake8", "pylint" },
+				javascript = { "eslint" },
+				typescript = { "eslint" },
+				json = { "jsonlint" },
+				yaml = { "yamllint" },
+				markdown = { "markdownlint" },
+				bash = { "shellcheck" },
+				sh = { "shellcheck" },
+			}
+
+			-- Run linting on save
+			vim.api.nvim_create_autocmd({ "BufWritePost" }, {
+				callback = function()
+					require("lint").try_lint()
+				end,
+			})
+
+			-- Manual lint trigger
+			vim.keymap.set("n", "<leader>l", function() lint.try_lint() end, { desc = "Trigger Linting" })
+		end,
+	},
+
+	-- ============================================
 	-- FILE TREE
 	-- ============================================
 	{
@@ -1000,7 +1114,7 @@ return {
 				linehl = false,
 				word_diff = false,
 				current_line_blame = true,
-				current_line_blame_opts = { virt_text = true, virt_text_pos = "eol", delay = 1000 },
+				current_line_blame_opts = { virt_text = true, virt_text_pos = "eol", delay = 2000 },  -- Increased from 1000ms
 				current_line_blame_formatter = "<author>, <author_time:%Y-%m-%d> - <summary>",
 				on_attach = function(bufnr)
 					local gs = package.loaded.gitsigns
@@ -1047,6 +1161,51 @@ return {
 		config = function()
 			vim.g.lazygit_floating_window_winblend = 0
 			vim.g.lazygit_floating_window_scaling_factor = 0.9
+		end,
+	},
+
+	-- Vim Illuminate (Highlight word under cursor)
+	{
+		"RRethy/vim-illuminate",
+		event = { "BufReadPost", "BufNewFile" },
+		config = function()
+			require("illuminate").configure({
+				providers = {
+					"lsp",
+					"treesitter",
+					"regex",
+				},
+				delay = 200,
+				filetype_overrides = {},
+				filetypes_denylist = {
+					"dirbuf",
+					"dirvish",
+					"fugitive",
+					"alpha",
+					"NvimTree",
+					"lazy",
+					"neogitstatus",
+					"Trouble",
+					"dashboard",
+					"TelescopePrompt",
+				},
+				filetypes_allowlist = {},
+				modes_denylist = {},
+				modes_allowlist = {},
+				providers_regex_syntax_denylist = {},
+				providers_regex_syntax_allowlist = {},
+				under_cursor = true,
+				large_file_cutoff = nil,
+				large_file_overrides = nil,
+				min_count_to_highlight = 2,
+				should_enable = function(bufnr)
+					return true
+				end,
+				case_insensitive_regex = false,
+			})
+			-- Keymaps for navigating references
+			vim.keymap.set("n", "]r", function() require("illuminate").next_reference({ wrap = true }) end, { desc = "Next Reference" })
+			vim.keymap.set("n", "[r", function() require("illuminate").next_reference({ reverse = true, wrap = true }) end, { desc = "Prev Reference" })
 		end,
 	},
 
@@ -1158,6 +1317,43 @@ return {
 		end,
 	},
 
+	-- Yanky (Yank history with Telescope)
+	{
+		"gbprod/yanky.nvim",
+		dependencies = { "nvim-telescope/telescope.nvim" },
+		event = "VeryLazy",
+		config = function()
+			require("yanky").setup({
+				highlight = {
+					on_put = true,
+					on_yank = true,
+					timer = 200,
+				},
+				picker = {
+					select = {
+						action = nil,
+					},
+					telescope = {
+						use_default_mappings = true,
+						mappings = nil,
+					},
+				},
+				system_clipboard = {
+					sync_with_ring = false,
+				},
+			})
+			-- Telescope integration
+			require("telescope").load_extension("yank_history")
+			-- Keymaps
+			vim.keymap.set({ "n", "x" }, "y", "<Plug>(YankyYank)")
+			vim.keymap.set({ "n", "x" }, "p", "<Plug>(YankyPutAfter)")
+			vim.keymap.set({ "n", "x" }, "P", "<Plug>(YankyPutBefore)")
+			vim.keymap.set("n", "<c-p>", "<Plug>(YankyPreviousEntry)")
+			vim.keymap.set("n", "<c-n>", "<Plug>(YankyNextEntry)")
+			vim.keymap.set("n", "<leader>sy", "<cmd>Telescope yank_history<cr>", { desc = "Yank History" })
+		end,
+	},
+
 	-- ============================================
 	-- UI COMPONENTS
 	-- ============================================
@@ -1227,60 +1423,65 @@ return {
 	},
 
 	-- ============================================
-	-- WHICH-KEY (Keymap helper)
+	-- WHICH-KEY (Keymap helper) - Deferred for faster first paint (Enhancement #10)
 	-- ============================================
 	{
 		"folke/which-key.nvim",
 		event = "VeryLazy",
 		priority = 50,
 		config = function()
-			local wk = require("which-key")
-			wk.setup({
-				preset = "modern",
-				delay = 300,
-				plugins = {
-					marks = true,
-					registers = true,
-					spelling = { enabled = true, suggestions = 20 },
-					presets = { operators = true, motions = true, text_objects = true, windows = true, nav = true, z = true, g = true },
-				},
-				win = { border = "rounded", padding = { 1, 2 }, wo = { winblend = 0 } },
-				layout = { height = { min = 4, max = 25 }, width = { min = 20, max = 50 }, spacing = 3, align = "left" },
-				icons = { breadcrumb = "", separator = "➜", group = "+" },
-			})
+			vim.defer_fn(function()
+				local wk = require("which-key")
+				wk.setup({
+					preset = "modern",
+					delay = 300,
+					plugins = {
+						marks = true,
+						registers = true,
+						spelling = { enabled = true, suggestions = 20 },
+						presets = { operators = true, motions = true, text_objects = true, windows = true, nav = true, z = true, g = true },
+					},
+					win = { border = "rounded", padding = { 1, 2 }, wo = { winblend = 0 } },
+					layout = { height = { min = 4, max = 25 }, width = { min = 20, max = 50 }, spacing = 3, align = "left" },
+					icons = { breadcrumb = "", separator = "➜", group = "+" },
+				})
 
-			wk.add({
-				{ "<leader>r", group = "Run/Refactor", icon = { icon = "", color = "green" } },
-				{ "<leader>rr", desc = "🔥 Run Java Main", icon = { icon = "", color = "red" } },
-				{ "<leader>t", group = "Theme/Toggle/Test", icon = { icon = "", color = "cyan" } },
-				{ "<leader>h", group = "Harpoon", icon = { icon = "⚓", color = "blue" } },
-				{ "<leader>g", group = "Git", icon = { icon = "", color = "orange" } },
-				{ "<leader>S", group = "Session/Spectre", icon = { icon = "", color = "yellow" } },
-				{ "<leader>j", group = "Java", icon = { icon = "☕", color = "red" } },
-				{ "<leader>d", group = "Debug", icon = { icon = "", color = "red" } },
-				{ "<leader>e", group = "Explorer", icon = { icon = "", color = "blue" } },
-				{ "<leader>x", group = "Diagnostics", icon = { icon = "", color = "red" } },
-				{ "<leader>c", group = "Code", icon = { icon = "", color = "purple" } },
-				{ "<leader>b", group = "Buffer", icon = { icon = "", color = "blue" } },
-				{ "<leader>f", group = "Find/Files", icon = { icon = "", color = "green" } },
-				{ "<leader>s", group = "Split/Search", icon = { icon = "", color = "blue" } },
-				{ "<leader>l", group = "LSP", icon = { icon = "", color = "purple" } },
-				{ "<leader>z", group = "Zen", icon = { icon = "🧘", color = "cyan" } },
-				{ "<leader>R", group = "REST", icon = { icon = "󰒍", color = "yellow" } },
-				{ "<leader>p", group = "Pick/Breadcrumb", icon = { icon = "", color = "purple" } },
-				{ "<leader>a", group = "AI/Add", icon = { icon = "󰚩", color = "cyan" } },
-			})
+				wk.add({
+					{ "<leader>r", group = "Run/Refactor", icon = { icon = "", color = "green" } },
+					{ "<leader>rr", desc = "🔥 Run Java Main", icon = { icon = "", color = "red" } },
+					{ "<leader>t", group = "Theme/Toggle/Test", icon = { icon = "", color = "cyan" } },
+					{ "<leader>h", group = "Harpoon", icon = { icon = "⚓", color = "blue" } },
+					{ "<leader>g", group = "Git", icon = { icon = "", color = "orange" } },
+					{ "<leader>S", group = "Session", icon = { icon = "", color = "yellow" } },
+					{ "<leader>s", group = "Split/Search/Spectre", icon = { icon = "", color = "blue" } },
+					{ "<leader>sr", desc = "Spectre (Replace)", icon = { icon = "", color = "yellow" } },
+					{ "<leader>j", group = "Java", icon = { icon = "☕", color = "red" } },
+					{ "<leader>d", group = "Debug", icon = { icon = "", color = "red" } },
+					{ "<leader>e", group = "Explorer", icon = { icon = "", color = "blue" } },
+					{ "<leader>x", group = "Diagnostics", icon = { icon = "", color = "red" } },
+					{ "<leader>c", group = "Code", icon = { icon = "", color = "purple" } },
+					{ "<leader>b", group = "Buffer", icon = { icon = "", color = "blue" } },
+					{ "<leader>f", group = "Find/Files", icon = { icon = "", color = "green" } },
+					{ "<leader>l", group = "LSP", icon = { icon = "", color = "purple" } },
+					{ "<leader>z", group = "Zen", icon = { icon = "🧘", color = "cyan" } },
+					{ "<leader>R", group = "REST", icon = { icon = "󰒍", color = "yellow" } },
+					{ "<leader>p", group = "Pick/Breadcrumb", icon = { icon = "", color = "purple" } },
+					{ "<leader>a", group = "AI/Add", icon = { icon = "󰚩", color = "cyan" } },
+					{ "<leader>L", group = "LeetCode", icon = { icon = "󰪶", color = "orange" } },
+					{ "<leader>C", group = "Competitive", icon = { icon = "󰆧", color = "green" } },
+				})
 
-			-- Theme keymaps (standalone)
-			vim.keymap.set("n", "<leader>tt", function()
-				local ok, themes = pcall(require, "themes")
-				if ok then themes.toggle_theme() end
-			end, { desc = "Toggle Theme" })
-			
-			vim.keymap.set("n", "<leader>ts", function()
-				local ok, themes = pcall(require, "themes")
-				if ok then themes.show_telescope_picker() end
-			end, { desc = "Select Theme" })
+				-- Theme keymaps (standalone)
+				vim.keymap.set("n", "<leader>tt", function()
+					local ok, themes = pcall(require, "themes")
+					if ok then themes.toggle_theme() end
+				end, { desc = "Toggle Theme" })
+
+				vim.keymap.set("n", "<leader>ts", function()
+					local ok, themes = pcall(require, "themes")
+					if ok then themes.show_telescope_picker() end
+				end, { desc = "Select Theme" })
+			end, 0)
 		end,
 	},
 
@@ -1322,16 +1523,18 @@ return {
 		keys = {
 			{ "<leader>tn", function() require("neotest").run.run() end, desc = "Run Nearest Test" },
 			{ "<leader>tf", function() require("neotest").run.run(vim.fn.expand("%")) end, desc = "Run File Tests" },
-			{ "<leader>ts", function() require("neotest").summary.toggle() end, desc = "Toggle Test Summary" },
+			{ "<leader>tS", function() require("neotest").summary.toggle() end, desc = "Toggle Test Summary" },
 			{ "<leader>to", function() require("neotest").output.open({ enter = true }) end, desc = "Show Test Output" },
 			{ "<leader>td", function() require("neotest").run.run({ strategy = "dap" }) end, desc = "Debug Nearest Test" },
+			{ "<leader>tD", function() require("neotest").run.run(vim.fn.expand("%"), { strategy = "dap" }) end, desc = "Debug File Tests" },
 		},
 		config = function()
+			-- JAVA_HOME is set by java-runtime on FileType java; neotest-java uses env
 			require("neotest").setup({
 				adapters = {
 					require("neotest-java")({
-						-- Validates that junit is on the classpath
 						ignore_wrapper = false,
+						junit_jar_path = nil,
 					}),
 				},
 			})
@@ -1427,7 +1630,7 @@ return {
 		"nvim-pack/nvim-spectre",
 		dependencies = { "nvim-lua/plenary.nvim" },
 		keys = {
-			{ "<leader>S", function() require("spectre").toggle() end, desc = "Spectre (Replace)" },
+			{ "<leader>sr", function() require("spectre").toggle() end, desc = "Spectre (Replace)" },
 			{ "<leader>sw", function() require("spectre").open_visual({select_word=true}) end, desc = "Spectre (Word)" },
 			{ "<leader>sf", function() require("spectre").open_file_search({select_word=true}) end, desc = "Spectre (File)" },
 		},
@@ -1670,7 +1873,7 @@ return {
 				icons = {
 					enable = true,
 					kinds = {
-						use_devicons = true,
+						-- use_devicons = true, -- Deprecated, enabled by default/handled by icon provider
 						symbols = {
 							Array = "󰅪 ",
 							Boolean = " ",
@@ -1720,7 +1923,7 @@ return {
 					},
 				},
 				bar = {
-					hover = true,
+					hover = false,  -- DISABLED: hover tracking causes overhead
 					sources = function(buf, _)
 						local sources = require("dropbar.sources")
 						local utils = require("dropbar.utils")
@@ -1783,11 +1986,8 @@ return {
 				symbol = "│",
 				options = { try_as_border = true },
 				draw = {
-					delay = 50,
-					animation = require("mini.indentscope").gen_animation.linear({
-						duration = 50,
-						unit = "total",
-					}),
+					delay = 200,  -- Increased from 50ms
+					animation = require("mini.indentscope").gen_animation.none(),  -- DISABLED animation
 					priority = 2,
 				},
 			})
@@ -1835,11 +2035,11 @@ return {
 					"alpha", "dashboard", "NvimTree", "lazy", "mason",
 				},
 				handlers = {
-					cursor = true,
+					cursor = false,     -- DISABLED: updates on every cursor move
 					diagnostic = true,
 					gitsigns = true,
 					handle = true,
-					search = true,
+					search = false,     -- DISABLED: updates on every search
 				},
 			})
 			require("scrollbar.handlers.gitsigns").setup()
@@ -1880,11 +2080,11 @@ return {
 					insert = "#a6e3a1",
 					visual = "#cba6f7",
 				},
-				line_opacity = 0.25,
-				set_cursor = true,
-				set_cursorline = true,
+				line_opacity = 0.15,
+				set_cursor = false,     -- DISABLED: cursor updates cause lag
+				set_cursorline = false,
 				set_number = true,
-				ignore_filetypes = { "NvimTree", "TelescopePrompt", "alpha", "lazy", "mason" },
+				ignore = { "NvimTree", "TelescopePrompt", "alpha", "lazy", "mason" },
 			})
 		end,
 	},
@@ -2000,7 +2200,8 @@ return {
 		event = "BufReadPost",
 		config = function()
 			require("colorizer").setup({
-				filetypes = { "*" },
+				-- Only scan files where colors matter (not all filetypes)
+				filetypes = { "css", "scss", "html", "javascript", "typescript", "lua", "vim", "conf" },
 				user_default_options = {
 					RGB = true,
 					RRGGBB = true,
@@ -2011,7 +2212,7 @@ return {
 					hsl_fn = true,
 					css = true,
 					css_fn = true,
-					tailwind = true,
+					tailwind = false,  -- DISABLED: reduces scanning overhead
 					mode = "background",
 					virtualtext = "■",
 				},
@@ -2051,7 +2252,7 @@ return {
 				floating_window_above_cur_line = true,
 				floating_window_off_x = 1,
 				floating_window_off_y = 0,
-				hint_enable = true,
+				hint_enable = false,  -- DISABLED: virtual text hints cause lag in insert mode
 				hint_prefix = "󰏫 ",
 				hint_scheme = "String",
 				hi_parameter = "LspSignatureActiveParameter",
@@ -2064,7 +2265,7 @@ return {
 				transparency = nil,
 				shadow_blend = 36,
 				shadow_guibg = "Black",
-				timer_interval = 200,
+				timer_interval = 500,  -- Increased from 200ms
 				toggle_key = "<M-x>",
 				select_signature_key = "<M-n>",
 				move_cursor_key = nil,
@@ -2444,4 +2645,128 @@ return {
 		end,
 	},
 
+	-- ============================================
+	-- COMPETITIVE PROGRAMMING (LeetCode & Codeforces)
+	-- ============================================
+
+	-- 1. LEETCODE.NVIM - Full LeetCode integration
+	{
+		"kawre/leetcode.nvim",
+		build = ":TSUpdate html",
+		lazy = false, -- Force load to ensure it works
+		dependencies = {
+			"nvim-telescope/telescope.nvim",
+			"nvim-lua/plenary.nvim",
+			"MunifTanjim/nui.nvim",
+			"nvim-treesitter/nvim-treesitter",
+			"nvim-tree/nvim-web-devicons",
+		},
+		opts = {
+			lang = "java",
+			domain = "com",
+			
+			storage = {
+				home = vim.fn.stdpath("data") .. "/leetcode",
+				cache = vim.fn.stdpath("cache") .. "/leetcode",
+			},
+
+			description = {
+				position = "left",
+				width = "40%",
+				show_stats = true,
+			},
+
+			console = {
+				open_on_runcode = true,
+				size = { width = "75%", height = "75%" },
+			},
+
+			hooks = {
+				["enter"] = {
+					function()
+						vim.notify("🚀 LeetCode initialized! Use :Leet menu to start.", vim.log.levels.INFO)
+					end,
+				},
+			},
+
+			injector = {
+				["java"] = {
+					before = { 
+						"import java.util.*;", 
+						"import java.io.*;", 
+						"import java.math.*;",
+						"" 
+					},
+				},
+			},
+		},
+		keys = {
+			{ "<leader>Ll", "<cmd>Leet menu<cr>", desc = "LeetCode Menu" },
+			{ "<leader>Lr", "<cmd>Leet run<cr>", desc = "Run Code" },
+			{ "<leader>Ls", "<cmd>Leet submit<cr>", desc = "Submit Code" },
+			{ "<leader>Lp", "<cmd>Leet list<cr>", desc = "Problem List" },
+			{ "<leader>Ld", "<cmd>Leet daily<cr>", desc = "Daily Challenge" },
+			{ "<leader>Lc", "<cmd>Leet console<cr>", desc = "Console" },
+		},
+	},
+
+	-- 2. COMPETITEST.NVIM - For Codeforces, AtCoder, etc.
+	{
+		"xeluxee/competitest.nvim",
+		dependencies = { "MunifTanjim/nui.nvim" },
+		event = "VeryLazy", -- Load on startup (lazy but soon)
+		keys = {
+			{ "<leader>Cp", "<cmd>CompetiTest receive problem<cr>", desc = "Receive Problem (Browser)" },
+			{ "<leader>Cc", "<cmd>CompetiTest receive contest<cr>", desc = "Receive Contest (Browser)" },
+			{ "<leader>Cr", "<cmd>CompetiTest run<cr>", desc = "Run Test Cases" },
+			{ "<leader>Ca", "<cmd>CompetiTest add_testcase<cr>", desc = "Add Test Case" },
+			{ "<leader>Ce", "<cmd>CompetiTest edit_testcase<cr>", desc = "Edit Test Case" },
+			{ "<leader>Cs", "<cmd>CompetiTest show_ui<cr>", desc = "Approve/Edit UI" },
+		},
+		config = function()
+			require("competitest").setup({
+				runner_ui = {
+					interface = "popup",
+				},
+				popup_ui = {
+					total_width = 0.85,
+					total_height = 0.8,
+					layout = {
+						{ 1, "tc" },
+						{ 1, { { 1, "so" }, { 1, "eo" } } },
+						{ 1, "si" },
+					},
+				},
+				
+				-- Important: Paths must exist or be creatable
+				received_problems_path = vim.fn.expand("~") .. "/competitive/$(JUDGE)/$(CONTEST)/$(PROBLEM).$(FEXT)",
+				received_contests_directory = vim.fn.expand("~") .. "/competitive/$(JUDGE)/$(CONTEST)",
+				received_contests_problems_path = "$(PROBLEM).$(FEXT)",
+
+				testcases_directory = "./testcases",
+				testcases_use_single_file = false,
+
+				compile_command = {
+					java = { exec = "javac", args = { "$(FNAME)" } },
+				},
+				run_command = {
+					java = { exec = "java", args = { "$(FNOEXT)" } },
+				},
+
+				template_file = {
+					java = "/home/ujjawal/templates/cp.java",
+				},
+			})
+			-- Confirmation
+			vim.defer_fn(function()
+				vim.notify("⚔️ CompetiTest Ready! Use <leader>Cp to receive problems.", vim.log.levels.INFO)
+			end, 1000)
+		end,
+	},
+
+	-- 3. CP-TEMPLATE - Helper for fast templates (Optional)
+	{
+		"p00f/cphelper.nvim",
+		enabled = false,
+	},
 }
