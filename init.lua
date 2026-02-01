@@ -22,7 +22,7 @@ require('lazy').setup({
   { import = 'plugins' },
 }, {
   defaults = { lazy = false, version = false },
-  install = { missing = true, colorscheme = { 'catppuccin', 'habamax' } },
+  install = { missing = true, colorscheme = { 'dracula', 'habamax' } },
   checker = { enabled = true, notify = false, frequency = 86400 },
   change_detection = { notify = false },
   performance = {

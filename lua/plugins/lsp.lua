@@ -1,22 +1,36 @@
 -- lua/plugins/lsp.lua
--- LSP, Mason, and language server plugins
+-- PERFORMANCE OPTIMIZED LSP configuration (Neovim 0.11+ compatible)
 
 return {
-  -- Mason (LSP Installer)
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- MASON (LSP Installer)
+  -- ═══════════════════════════════════════════════════════════════════════
   {
     'williamboman/mason.nvim',
     build = ':MasonUpdate',
-    opts = { ui = { icons = { package_installed = '✓', package_pending = '➜', package_uninstalled = '✗' }, border = 'rounded' } },
+    opts = {
+      ui = {
+        icons = { package_installed = '✓', package_pending = '➜', package_uninstalled = '✗' },
+        border = 'single',
+      },
+    },
   },
 
-  -- Mason-LSPConfig
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- MASON-LSPCONFIG
+  -- ═══════════════════════════════════════════════════════════════════════
   {
     'williamboman/mason-lspconfig.nvim',
     dependencies = { 'williamboman/mason.nvim', 'neovim/nvim-lspconfig' },
-    opts = { ensure_installed = { 'jdtls', 'lua_ls', 'jsonls', 'yamlls' }, automatic_installation = true },
+    opts = {
+      ensure_installed = { 'jdtls', 'lua_ls', 'jsonls', 'yamlls' },
+      automatic_installation = true,
+    },
   },
 
-  -- LSPConfig (Neovim 0.11+ compatible)
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- LSPCONFIG (Neovim 0.11+ compatible - uses new API only)
+  -- ═══════════════════════════════════════════════════════════════════════
   {
     'neovim/nvim-lspconfig',
     event = { 'BufReadPre', 'BufNewFile' },
@@ -26,7 +40,10 @@ return {
 
       -- Shared on_attach function for keymaps
       local on_attach = function(client, bufnr)
-        local map = function(keys, func, desc) vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc }) end
+        local map = function(keys, func, desc)
+          vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
+        end
+        
         map('gd', vim.lsp.buf.definition, 'Go to Definition')
         map('gD', vim.lsp.buf.declaration, 'Go to Declaration')
         map('gr', vim.lsp.buf.references, 'Go to References')
@@ -36,46 +53,69 @@ return {
         map('<leader>rn', vim.lsp.buf.rename, 'Rename')
         map('<leader>ca', vim.lsp.buf.code_action, 'Code Action')
         map('<leader>lf', function() vim.lsp.buf.format({ async = true }) end, 'Format')
+        
         -- Enable inlay hints if supported (Neovim 0.10+)
         if client.supports_method('textDocument/inlayHint') then
-          vim.lsp.inlay_hint.enable(true, { bufnr = bufnr })
+          pcall(vim.lsp.inlay_hint.enable, true, { bufnr = bufnr })
         end
       end
 
-      -- Use vim.lsp.config for Neovim 0.11+ (new API)
-      -- This silences the deprecation warning and is future-proof
-      local lsp_configs = {
-        lua_ls = {
+      -- Check for Neovim 0.11+ new LSP API
+      local has_new_api = vim.lsp.config ~= nil and type(vim.lsp.config) == 'function'
+      
+      if has_new_api then
+        -- Neovim 0.11+ native API
+        vim.lsp.config('lua_ls', {
           capabilities = capabilities,
           on_attach = on_attach,
           settings = {
             Lua = {
               diagnostics = { globals = { 'vim' } },
-              workspace = { library = vim.api.nvim_get_runtime_file('', true), checkThirdParty = false },
+              workspace = { checkThirdParty = false },
               telemetry = { enable = false },
-              hint = { enable = true, setType = true },
             },
           },
-        },
-        jsonls = { capabilities = capabilities, on_attach = on_attach },
-        yamlls = { capabilities = capabilities, on_attach = on_attach, settings = { yaml = { keyOrdering = false } } },
-      }
+        })
+        vim.lsp.enable('lua_ls')
 
-      -- Apply configurations using the new API if available, fallback to old API
-      for server, config in pairs(lsp_configs) do
-        if vim.lsp.config and type(vim.lsp.config) == 'function' then
-          -- Neovim 0.11+ native API
-          vim.lsp.config(server, config)
-          vim.lsp.enable(server)
-        else
-          -- Fallback for older Neovim versions
-          require('lspconfig')[server].setup(config)
-        end
+        vim.lsp.config('jsonls', { capabilities = capabilities, on_attach = on_attach })
+        vim.lsp.enable('jsonls')
+
+        vim.lsp.config('yamlls', {
+          capabilities = capabilities,
+          on_attach = on_attach,
+          settings = { yaml = { keyOrdering = false } },
+        })
+        vim.lsp.enable('yamlls')
+      else
+        -- Fallback for older Neovim versions (pre-0.11)
+        local lspconfig = require('lspconfig')
+        
+        lspconfig.lua_ls.setup({
+          capabilities = capabilities,
+          on_attach = on_attach,
+          settings = {
+            Lua = {
+              diagnostics = { globals = { 'vim' } },
+              workspace = { checkThirdParty = false },
+              telemetry = { enable = false },
+            },
+          },
+        })
+
+        lspconfig.jsonls.setup({ capabilities = capabilities, on_attach = on_attach })
+        lspconfig.yamlls.setup({
+          capabilities = capabilities,
+          on_attach = on_attach,
+          settings = { yaml = { keyOrdering = false } },
+        })
       end
     end,
   },
 
-  -- Trouble (Diagnostics)
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- TROUBLE (Diagnostics)
+  -- ═══════════════════════════════════════════════════════════════════════
   {
     'folke/trouble.nvim',
     cmd = 'Trouble',
@@ -83,44 +123,78 @@ return {
       { '<leader>xx', '<cmd>Trouble diagnostics toggle<cr>', desc = 'Diagnostics (Trouble)' },
       { '<leader>xX', '<cmd>Trouble diagnostics toggle filter.buf=0<cr>', desc = 'Buffer Diagnostics' },
       { '<leader>cs', '<cmd>Trouble symbols toggle focus=false<cr>', desc = 'Symbols' },
-      { '<leader>cl', '<cmd>Trouble lsp toggle focus=false win.position=right<cr>', desc = 'LSP Definitions' },
     },
-    opts = { position = 'bottom', height = 12, icons = true, mode = 'workspace_diagnostics', fold_open = '', fold_closed = '', group = true, padding = true, cycle_results = true },
+    opts = {
+      position = 'bottom',
+      height = 12,
+      icons = true,
+      mode = 'workspace_diagnostics',
+    },
   },
 
-  -- Glance (LSP Peeking)
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- GLANCE (LSP Peeking)
+  -- ═══════════════════════════════════════════════════════════════════════
   {
     'dnlhc/glance.nvim',
     cmd = 'Glance',
     keys = {
       { 'gpd', '<cmd>Glance definitions<CR>', desc = 'Peek Definitions' },
       { 'gpr', '<cmd>Glance references<CR>', desc = 'Peek References' },
-      { 'gpy', '<cmd>Glance type_definitions<CR>', desc = 'Peek Type Definitions' },
       { 'gpi', '<cmd>Glance implementations<CR>', desc = 'Peek Implementations' },
     },
-    opts = { border = { enable = true, top_char = '―', bottom_char = '―' } },
+    opts = { border = { enable = true } },
   },
 
-  -- Symbols Outline
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- SYMBOLS OUTLINE
+  -- ═══════════════════════════════════════════════════════════════════════
   {
     'simrat39/symbols-outline.nvim',
-    cmd = { 'SymbolsOutline', 'SymbolsOutlineOpen', 'SymbolsOutlineClose' },
+    cmd = { 'SymbolsOutline', 'SymbolsOutlineOpen' },
     keys = { { '<leader>co', '<cmd>SymbolsOutline<cr>', desc = 'Symbols Outline' } },
-    opts = { highlight_hovered_item = true, show_guides = true, auto_preview = false, position = 'right', relative_width = true, width = 25, autofold_depth = 2 },
+    opts = {
+      highlight_hovered_item = true,
+      show_guides = true,
+      auto_preview = false,
+      position = 'right',
+      width = 25,
+    },
   },
 
-  -- Inc-Rename
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- INC-RENAME
+  -- ═══════════════════════════════════════════════════════════════════════
   {
     'smjonas/inc-rename.nvim',
     cmd = 'IncRename',
-    keys = { { '<leader>rn', function() return ':IncRename ' .. vim.fn.expand('<cword>') end, expr = true, desc = 'Inc Rename' } },
+    keys = {
+      {
+        '<leader>rN',
+        function() return ':IncRename ' .. vim.fn.expand('<cword>') end,
+        expr = true,
+        desc = 'Inc Rename',
+      },
+    },
     opts = { input_buffer_type = 'dressing' },
   },
 
-  -- LSP Signature
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- LSP SIGNATURE
+  -- ═══════════════════════════════════════════════════════════════════════
   {
     'ray-x/lsp_signature.nvim',
     event = 'LspAttach',
-    opts = { bind = true, floating_window = true, floating_window_above_cur_line = true, hint_enable = false, fix_pos = false, always_trigger = false, timer_interval = 500, toggle_key = '<M-x>', handler_opts = { border = 'rounded' } },
+    opts = {
+      bind = true,
+      floating_window = true,
+      floating_window_above_cur_line = true,
+      hint_enable = false,
+      fix_pos = false,
+      always_trigger = false,
+      timer_interval = 500,
+      toggle_key = '<M-x>',
+      handler_opts = { border = 'single' },
+    },
   },
 }

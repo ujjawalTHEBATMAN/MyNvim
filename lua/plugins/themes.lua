@@ -1,55 +1,90 @@
 -- lua/plugins/themes.lua
--- Theme plugins (curated selection for performance)
+-- OPTIMIZED: Only Dracula theme for maximum performance
 
 return {
-  -- Main theme (loads first)
+  -- ═══════════════════════════════════════════════════════════════════════
+  -- DRACULA ONLY - Fast, clean, zero bloat
+  -- ═══════════════════════════════════════════════════════════════════════
   {
-    'catppuccin/nvim',
-    name = 'catppuccin',
+    'Mofiqul/dracula.nvim',
+    name = 'dracula',
     priority = 1000,
     lazy = false,
     config = function()
-      require('catppuccin').setup({
-        flavour = 'mocha',
-        transparent_background = true,
-        term_colors = true,
-        dim_inactive = { enabled = true, shade = 'dark', percentage = 0.15 },
-        styles = { comments = { 'italic' }, conditionals = { 'italic' }, functions = { 'bold' }, types = { 'bold' }, keywords = { 'italic' } },
-        integrations = {
-          cmp = true, gitsigns = true, nvimtree = true, treesitter = true, bufferline = true, lualine = true,
-          native_lsp = { enabled = true, virtual_text = { errors = { 'italic' }, hints = { 'italic' }, warnings = { 'italic' }, information = { 'italic' } }, underlines = { errors = { 'underline' }, hints = { 'underline' }, warnings = { 'underline' }, information = { 'underline' } } },
-          mason = true, which_key = true, telescope = { enabled = true, style = 'nvchad' }, harpoon = true, dap = true, dap_ui = true, indent_blankline = true,
+      require('dracula').setup({
+        -- Core settings
+        transparent_bg = true,
+        italic_comment = true,
+        
+        -- Colors (Dracula palette)
+        colors = {
+          bg = '#282A36',
+          fg = '#F8F8F2',
+          selection = '#44475A',
+          comment = '#6272A4',
+          red = '#FF5555',
+          orange = '#FFB86C',
+          yellow = '#F1FA8C',
+          green = '#50FA7B',
+          purple = '#BD93F9',
+          cyan = '#8BE9FD',
+          pink = '#FF79C6',
+          bright_red = '#FF6E6E',
+          bright_green = '#69FF94',
+          bright_yellow = '#FFFFA5',
+          bright_blue = '#D6ACFF',
+          bright_magenta = '#FF92DF',
+          bright_cyan = '#A4FFFF',
+          bright_white = '#FFFFFF',
+          menu = '#21222C',
+          visual = '#3E4452',
+          gutter_fg = '#4B5263',
+          nontext = '#3B4048',
         },
+        
+        -- Overrides for better visibility
+        overrides = function(colors)
+          return {
+            -- Better line number visibility
+            LineNr = { fg = colors.comment },
+            CursorLineNr = { fg = colors.cyan, bold = true },
+            
+            -- Smoother scrollbar integration
+            ScrollbarHandle = { bg = colors.selection },
+            
+            -- Better completion menu
+            Pmenu = { bg = colors.menu },
+            PmenuSel = { bg = colors.selection, fg = colors.cyan },
+            
+            -- Better diagnostics
+            DiagnosticVirtualTextError = { fg = colors.red, italic = true },
+            DiagnosticVirtualTextWarn = { fg = colors.orange, italic = true },
+            DiagnosticVirtualTextInfo = { fg = colors.cyan, italic = true },
+            DiagnosticVirtualTextHint = { fg = colors.green, italic = true },
+            
+            -- Better git signs
+            GitSignsAdd = { fg = colors.green },
+            GitSignsChange = { fg = colors.yellow },
+            GitSignsDelete = { fg = colors.red },
+            
+            -- Treesitter context
+            TreesitterContext = { bg = colors.menu },
+            TreesitterContextLineNumber = { fg = colors.cyan },
+          }
+        end,
       })
-      vim.cmd.colorscheme('catppuccin')
-      vim.defer_fn(function() local ok, themes = pcall(require, 'themes'); if ok then themes.setup() end end, 100)
+      
+      -- Apply colorscheme
+      vim.cmd.colorscheme('dracula')
+      
+      -- Save as last theme
+      local cache_dir = vim.fn.stdpath('cache')
+      vim.fn.mkdir(cache_dir, 'p')
+      local file = io.open(cache_dir .. '/last_theme.txt', 'w')
+      if file then
+        file:write('dracula')
+        file:close()
+      end
     end,
   },
-
-  -- ========================================
-  -- TIER 1: Essential Dark Themes (Always Available)
-  -- ========================================
-  { 'rose-pine/neovim', name = 'rose-pine', lazy = true },
-  { 'rebelot/kanagawa.nvim', lazy = true },
-  { 'folke/tokyonight.nvim', lazy = true, priority = 1000 },
-  { 'ellisonleao/gruvbox.nvim', lazy = true, priority = 1000 },
-
-  -- ========================================
-  -- TIER 2: Professional (Load on demand)
-  -- ========================================
-  { 'navarasu/onedark.nvim', lazy = true },
-  { 'EdenEast/nightfox.nvim', lazy = true },
-  { 'Mofiqul/dracula.nvim', lazy = true },
-
-  -- ========================================
-  -- TIER 3: Aesthetic Extras (Load on demand)
-  -- ========================================
-  { 'sainnhe/everforest', lazy = true },
-  { 'sainnhe/sonokai', lazy = true },
-  { 'nyoom-engineering/oxocarbon.nvim', lazy = true },
-  { 'scottmckendry/cyberdream.nvim', lazy = true },
-  { 'Mofiqul/vscode.nvim', lazy = true },
-
-  -- NOTE: Reduced from 30+ themes to 12 essential ones for faster startup
-  -- The themes/init.lua theme switcher will still work with these
 }
