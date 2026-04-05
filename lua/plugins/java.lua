@@ -63,4 +63,35 @@ return {
       })
     end,
   },
+  
+  -- JDTLS Resource Monitor - Advanced memory and CPU monitoring
+  {
+    'jdtls-monitor',
+    lazy = true,
+    cmd = { 'JdtlsMonitor', 'JdtlsMonitorOpen', 'JdtlsMonitorClose', 'JdtlsMonitorRefresh', 'JdtlsMonitorRestart', 'JdtlsMonitorLog', 'JdtlsMonitorHistory' },
+    config = function()
+      require('jdtls-monitor').setup({
+        -- Thresholds (tuned for 512MB JDTLS limit)
+        memory_warning_mb = 400,      -- Warn at 400MB (78% of limit)
+        memory_critical_mb = 480,     -- Critical at 480MB (94% of limit)
+        cpu_warning_percent = 80,     -- Warn at 80% CPU
+        
+        -- Monitoring intervals
+        update_interval_ms = 2000,    -- Update every 2 seconds
+        history_max_entries = 60,     -- Keep 2 minutes of history
+        
+        -- Display options
+        show_in_statusline = true,    -- Show compact stats in statusline
+        auto_open_on_warning = false, -- Don't auto-open on warnings (can be enabled)
+        log_to_file = false,          -- Disable logging by default
+      })
+    end,
+    keys = {
+      { '<leader>jm', '<cmd>JdtlsMonitor<cr>', desc = 'Toggle JDTLS Monitor' },
+      { '<leader>jmo', '<cmd>JdtlsMonitorOpen<cr>', desc = 'Open JDTLS Monitor' },
+      { '<leader>jmc', '<cmd>JdtlsMonitorClose<cr>', desc = 'Close JDTLS Monitor' },
+      { '<leader>jmr', '<cmd>JdtlsMonitorRefresh<cr>', desc = 'Refresh JDTLS Stats' },
+      { '<leader>jmt', '<cmd>JdtlsMonitorRestart<cr>', desc = 'Restart JDTLS' },
+    },
+  },
 }

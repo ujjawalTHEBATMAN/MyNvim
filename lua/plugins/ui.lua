@@ -19,6 +19,18 @@ return {
         if #clients == 0 then return '' end
         return '[' .. clients[1].name .. ']'  -- Only show first LSP for speed
       end
+      
+      -- JDTLS Monitor component (only shows in Java files)
+      local function jdtls_monitor()
+        -- Only render in Java files
+        if vim.bo.filetype ~= 'java' then return '' end
+        
+        -- Try to get stats from jdtls-monitor module
+        local ok, monitor = pcall(require, 'jdtls-monitor')
+        if not ok then return '' end
+        
+        return monitor.get_statusline_component() or ''
+      end
 
       require('lualine').setup({
         options = {
@@ -38,7 +50,7 @@ return {
           lualine_c = { { 'filename', path = 1, symbols = { modified = ' ●', readonly = ' 󰌾' } }, lsp_clients },
           lualine_x = { 'diagnostics', 'filetype' },
           lualine_y = { 'progress' },
-          lualine_z = { 'location' },
+          lualine_z = { jdtls_monitor, 'location' },
         },
         extensions = { 'nvim-tree', 'trouble', 'lazy', 'quickfix' },
       })

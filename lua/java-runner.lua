@@ -1,6 +1,7 @@
 -- lua/java-runner.lua
 -- IntelliJ-Style Java Runner for Neovim
 -- Compiles to ./out directory, detects Maven/Gradle projects
+-- Enhanced with TestNG/Spock framework detection
 
 local M = {}
 
@@ -19,6 +20,13 @@ M.config = {
 		direction = "horizontal", -- horizontal, vertical, float
 		size = 15, -- lines for horizontal, columns for vertical
 		close_on_exit = false, -- keep terminal open after execution
+	},
+
+	-- Test framework detection
+	test_frameworks = {
+		auto_detect = true,        -- Auto-detect test framework from dependencies
+		prefer_testng = false,     -- Prefer TestNG over JUnit if both present
+		support_spock = true,      -- Enable Spock framework detection
 	},
 }
 
@@ -73,6 +81,77 @@ local function detect_project_type(root)
 	end
 
 	return "standalone"
+end
+
+-- Detect test framework from project dependencies
+---@param root string Project root directory
+---@return string framework: "junit5", "junit4", "testng", "spock", or "unknown"
+local function detect_test_framework(root)
+	local project_type = detect_project_type(root)
+	
+	-- Check Maven pom.xml
+	if project_type == "maven" or project_type == "maven_wrapper" then
+		local pom_path = root .. "/pom.xml"
+		if file_exists(pom_path) then
+			local pom_content = table.concat(vim.fn.readfile(pom_path), "\n"):lower()
+			
+			-- Check for Spock first (Groovy-based)
+			if M.config.test_frameworks.support_spock then
+				if pom_content:find("spock%-core") or pom_content:find("spock%-spring") then
+					return "spock"
+				end
+			end
+			
+			-- Check for TestNG
+			if pom_content:find("testng") then
+				return "testng"
+			end
+			
+			-- Check for JUnit 5 (Jupiter)
+			if pom_content:find("junit%-jupiter") or pom_content:find("junit5") then
+				return "junit5"
+			end
+			
+			-- Check for JUnit 4
+			if pom_content:find("junit") and not pom_content:find("jupiter") then
+				return "junit4"
+			end
+		end
+	end
+	
+	-- Check Gradle build files
+	if project_type == "gradle" or project_type == "gradle_wrapper" then
+		local gradle_path = file_exists(root .. "/build.gradle.kts") and root .. "/build.gradle.kts" 
+			or root .. "/build.gradle"
+		if file_exists(gradle_path) then
+			local gradle_content = table.concat(vim.fn.readfile(gradle_path), "\n"):lower()
+			
+			-- Check for Spock first
+			if M.config.test_frameworks.support_spock then
+				if gradle_content:find("spock") then
+					return "spock"
+				end
+			end
+			
+			-- Check for TestNG
+			if gradle_content:find("testng") then
+				return "testng"
+			end
+			
+			-- Check for JUnit 5 (useJUnitPlatform or junit-jupiter)
+			if gradle_content:find("usejunitplatform") or gradle_content:find("junit%-jupiter") or gradle_content:find("junit5") then
+				return "junit5"
+			end
+			
+			-- Check for JUnit 4
+			if gradle_content:find("testimplementation.*junit") then
+				return "junit4"
+			end
+		end
+	end
+	
+	-- Default to JUnit 5 (modern standard)
+	return "junit5"
 end
 
 -- Get the fully qualified class name from the file
@@ -285,6 +364,47 @@ local function run_gradle(root, use_wrapper)
 	run_in_terminal(cmd, root, "Gradle Run")
 end
 
+-- Run tests with detected framework (JUnit/TestNG/Spock)
+local function run_tests(root, use_wrapper, project_type)
+	local test_framework = detect_test_framework(root)
+	local cmd
+	
+	if project_type == "maven" or project_type == "maven_wrapper" then
+		local mvn_cmd = use_wrapper and "./mvnw" or "mvn"
+		
+		if test_framework == "testng" then
+			cmd = mvn_cmd .. " test -Dsurefire.provider=surefire -Dsurefire.useFile=false -Dtestng.thread.count=4"
+			vim.notify("🧪 TestNG detected - running Maven tests with TestNG", vim.log.levels.INFO)
+		elseif test_framework == "spock" then
+			cmd = mvn_cmd .. " test -Dsurefire.includes='**/*Spec.java'"
+			vim.notify("🐘 Spock detected - running Maven tests with Spock", vim.log.levels.INFO)
+		else
+			-- JUnit 4 or 5
+			cmd = mvn_cmd .. " test -q"
+			vim.notify(string.format("🧪 %s detected - running Maven tests", test_framework == "junit5" and "JUnit 5" or "JUnit 4"), vim.log.levels.INFO)
+		end
+		
+	elseif project_type == "gradle" or project_type == "gradle_wrapper" then
+		local gradle_cmd = use_wrapper and "./gradlew" or "gradle"
+		
+		if test_framework == "testng" then
+			cmd = gradle_cmd .. " test -Dtestng.thread.count=4 --info"
+			vim.notify("🧪 TestNG detected - running Gradle tests with TestNG", vim.log.levels.INFO)
+		elseif test_framework == "spock" then
+			cmd = gradle_cmd .. " test --tests '*Spec' --info"
+			vim.notify("🐘 Spock detected - running Gradle tests with Spock", vim.log.levels.INFO)
+		else
+			-- JUnit 4 or 5
+			cmd = gradle_cmd .. " test --info"
+			vim.notify(string.format("🧪 %s detected - running Gradle tests", test_framework == "junit5" and "JUnit 5" or "JUnit 4"), vim.log.levels.INFO)
+		end
+	end
+	
+	if cmd then
+		run_in_terminal(cmd, root, "Test Run (" .. test_framework .. ")")
+	end
+end
+
 -- Run standalone Java file (IntelliJ-style with out/ directory)
 local function run_standalone(root, filepath)
 	local out_dir = ensure_output_dir(root)
@@ -419,6 +539,7 @@ function M.info()
 	local filepath = vim.fn.expand("%:p")
 	local root = find_project_root()
 	local project_type = detect_project_type(root)
+	local test_framework = detect_test_framework(root)
 	local class_name = get_class_name(filepath)
 	local src_root = get_source_root(root, filepath)
 
@@ -428,6 +549,7 @@ function M.info()
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📍 Project Root: %s
 📦 Project Type: %s
+🧪 Test Framework: %s
 📂 Source Root:  %s
 📄 Current File: %s
 🏷️  Class Name:   %s
@@ -435,12 +557,65 @@ function M.info()
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━]],
 		root,
 		project_type,
+		test_framework,
 		src_root,
 		vim.fn.fnamemodify(filepath, ":t"),
 		class_name,
 		M.config.output_dir
 	)
 
+	vim.notify(info, vim.log.levels.INFO)
+end
+
+-- Run tests with auto-detected framework
+function M.test()
+	local root = find_project_root()
+	local project_type = detect_project_type(root)
+
+	if project_type == "maven_wrapper" then
+		run_tests(root, true, "maven")
+	elseif project_type == "maven" then
+		run_tests(root, false, "maven")
+	elseif project_type == "gradle_wrapper" then
+		run_tests(root, true, "gradle")
+	elseif project_type == "gradle" then
+		run_tests(root, false, "gradle")
+	else
+		vim.notify("❌ No test framework detected for standalone files", vim.log.levels.ERROR)
+	end
+end
+
+-- Show detected test framework
+function M.test_info()
+	local root = find_project_root()
+	local test_framework = detect_test_framework(root)
+	
+	local framework_names = {
+		junit5 = "JUnit 5 (Jupiter)",
+		junit4 = "JUnit 4",
+		testng = "TestNG",
+		spock = "Spock (Groovy)",
+		unknown = "Unknown (defaulting to JUnit 5)"
+	}
+	
+	local info = string.format(
+		[[
+🧪 Test Framework Detection
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📍 Project Root: %s
+🔍 Detected Framework: %s
+📖 Full Name: %s
+
+Framework-specific commands:
+  :JavaTest        → Run all tests
+  :JavaTestSingle  → Run single test class
+  :JavaTestPackage → Run tests in package
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━]],
+		root,
+		test_framework,
+		framework_names[test_framework] or framework_names.unknown
+	)
+	
 	vim.notify(info, vim.log.levels.INFO)
 end
 
@@ -470,6 +645,14 @@ function M.setup(opts)
 		M.info()
 	end, { desc = "Show Java project info" })
 
+	vim.api.nvim_create_user_command("JavaTest", function()
+		M.test()
+	end, { desc = "🧪 Run tests (auto-detect JUnit/TestNG/Spock)" })
+
+	vim.api.nvim_create_user_command("JavaTestInfo", function()
+		M.test_info()
+	end, { desc = "🧪 Show detected test framework" })
+
 	-- Setup keymaps for Java files
 	vim.api.nvim_create_autocmd("FileType", {
 		pattern = "java",
@@ -479,10 +662,13 @@ function M.setup(opts)
 			vim.keymap.set("n", "<leader>jb", M.compile, vim.tbl_extend("force", opts, { desc = "☕ Compile Java" }))
 			vim.keymap.set("n", "<leader>jx", M.clean, vim.tbl_extend("force", opts, { desc = "☕ Clean Output" }))
 			vim.keymap.set("n", "<leader>ji", M.info, vim.tbl_extend("force", opts, { desc = "☕ Project Info" }))
+			vim.keymap.set("n", "<leader>jt", M.test, vim.tbl_extend("force", opts, { desc = "🧪 Run Tests" }))
+			vim.keymap.set("n", "<leader>jti", M.test_info, vim.tbl_extend("force", opts, { desc = "🧪 Test Framework Info" }))
 
 			-- Quick run with F5 (like most IDEs)
 			vim.keymap.set("n", "<F5>", M.run, vim.tbl_extend("force", opts, { desc = "☕ Run Java" }))
 			vim.keymap.set("n", "<F9>", M.compile, vim.tbl_extend("force", opts, { desc = "☕ Compile Java" }))
+			vim.keymap.set("n", "<F10>", M.test, vim.tbl_extend("force", opts, { desc = "🧪 Run Tests" }))
 		end,
 	})
 end
