@@ -24,12 +24,12 @@ return {
       },
     },
     keys = {
-      { '<leader>Ll', '<cmd>Leet menu<cr>', desc = 'LeetCode Menu' },
-      { '<leader>Lr', '<cmd>Leet run<cr>', desc = 'Run Code' },
-      { '<leader>Ls', '<cmd>Leet submit<cr>', desc = 'Submit Code' },
-      { '<leader>Lp', '<cmd>Leet list<cr>', desc = 'Problem List' },
-      { '<leader>Ld', '<cmd>Leet daily<cr>', desc = 'Daily Challenge' },
-      { '<leader>Lc', '<cmd>Leet console<cr>', desc = 'Console' },
+      { '<leader>Ll', ':Leet menu<cr>', desc = 'LeetCode Menu' },
+      { '<leader>Lr', ':Leet run<cr>', desc = 'Run Code' },
+      { '<leader>Ls', ':Leet submit<cr>', desc = 'Submit Code' },
+      { '<leader>Lp', ':Leet list<cr>', desc = 'Problem List' },
+      { '<leader>Ld', ':Leet daily<cr>', desc = 'Daily Challenge' },
+      { '<leader>Lc', ':Leet console<cr>', desc = 'Console' },
     },
   },
 
