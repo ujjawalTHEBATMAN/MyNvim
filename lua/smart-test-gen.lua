@@ -9,12 +9,26 @@
 -- ║                                                                           ║
 -- ║  BEHAVIOR:                                                                ║
 -- ║    1. Detects package from source file                                    ║
--- ║    2. Creates test directory: src/main → src/test                         ║
--- ║    3. Creates test class: MyClass.java → MyClassTest.java                 ║
--- ║    4. Generates JUnit 5 tests and writes to file                          ║
+-- ║    2. Detects test framework (JUnit 5/TestNG/Spock) from project deps     ║
+-- ║    3. Creates test directory: src/main → src/test                         ║
+-- ║    4. Creates test class: MyClass.java → MyClassTest.java                 ║
+-- ║    5. Generates framework-specific tests and writes to file               ║
 -- ╚══════════════════════════════════════════════════════════════════════════╝
 
 local M = {}
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- CONFIGURATION
+-- ═══════════════════════════════════════════════════════════════════════════
+
+M.config = {
+	-- Auto-detect test framework from project dependencies
+	auto_detect_framework = true,
+	-- Default framework if detection fails
+	default_framework = "junit5",
+	-- Supported frameworks
+	supported_frameworks = { "junit5", "junit4", "testng", "spock" },
+}
 
 -- ═══════════════════════════════════════════════════════════════════════════
 -- PATH UTILITIES
@@ -54,6 +68,88 @@ function M.get_file_info()
   }
 end
 
+--- Find project root directory
+local function find_project_root()
+	local markers = { "pom.xml", "build.gradle", "build.gradle.kts", ".git" }
+	local current = vim.fn.expand("%:p:h")
+
+	for _, marker in ipairs(markers) do
+		local found = vim.fn.findfile(marker, current .. ";")
+		if found ~= "" then
+			return vim.fn.fnamemodify(found, ":p:h")
+		end
+	end
+
+	return vim.fn.getcwd()
+end
+
+--- Check if a file exists
+local function file_exists(path)
+	return vim.fn.filereadable(path) == 1
+end
+
+--- Detect test framework from project dependencies
+---@param root string Project root directory
+---@return string framework: "junit5", "junit4", "testng", "spock"
+local function detect_test_framework(root)
+	local pom_path = root .. "/pom.xml"
+	local gradle_path = file_exists(root .. "/build.gradle.kts") and root .. "/build.gradle.kts" 
+		or root .. "/build.gradle"
+	
+	-- Check Maven pom.xml
+	if file_exists(pom_path) then
+		local pom_content = table.concat(vim.fn.readfile(pom_path), "\n"):lower()
+		
+		-- Check for Spock first (Groovy-based)
+		if pom_content:find("spock%-core") or pom_content:find("spock%-spring") then
+			return "spock"
+		end
+		
+		-- Check for TestNG
+		if pom_content:find("testng") then
+			return "testng"
+		end
+		
+		-- Check for JUnit 5 (Jupiter)
+		if pom_content:find("junit%-jupiter") or pom_content:find("junit5") then
+			return "junit5"
+		end
+		
+		-- Check for JUnit 4
+		if pom_content:find("junit") and not pom_content:find("jupiter") then
+			return "junit4"
+		end
+	end
+	
+	-- Check Gradle build files
+	if file_exists(gradle_path) then
+		local gradle_content = table.concat(vim.fn.readfile(gradle_path), "\n"):lower()
+		
+		-- Check for Spock first
+		if gradle_content:find("spock") then
+			return "spock"
+		end
+		
+		-- Check for TestNG
+		if gradle_content:find("testng") then
+			return "testng"
+		end
+		
+		-- Check for JUnit 5
+		if gradle_content:find("usejunitplatform") or gradle_content:find("junit%-jupiter") or gradle_content:find("junit5") then
+			return "junit5"
+		end
+		
+		-- Check for JUnit 4
+		if gradle_content:find("testimplementation.*junit") then
+			return "junit4"
+		end
+	end
+	
+	-- Default to JUnit 5
+	return M.config.default_framework
+end
+
 --- Calculate test file path based on source file
 ---@param file_info table
 ---@return string test_filepath, string test_dir
@@ -91,20 +187,60 @@ end
 -- TEST GENERATION
 -- ═══════════════════════════════════════════════════════════════════════════
 
---- Generate test content using Ollama
+--- Generate test content using Ollama with framework-specific templates
 ---@param code string The source code to generate tests for
 ---@param file_info table File information
+---@param framework string Test framework: "junit5", "junit4", "testng", "spock"
 ---@param callback function Callback with generated content
-function M.generate_tests(code, file_info, callback)
+function M.generate_tests(code, file_info, framework, callback)
   local package_statement = ''
   if file_info.package_name then
     package_statement = 'package ' .. file_info.package_name .. ';'
   end
+  
+  -- Framework-specific configurations
+  local frameworks = {
+    junit5 = {
+      name = "JUnit 5 (Jupiter)",
+      imports = [[
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.BeforeEach;
+import static org.junit.jupiter.api.Assertions.*;]],
+      class_suffix = "Test",
+    },
+    junit4 = {
+      name = "JUnit 4",
+      imports = [[
+import org.junit.Test;
+import org.junit.Before;
+import static org.junit.Assert.*;]],
+      class_suffix = "Test",
+    },
+    testng = {
+      name = "TestNG",
+      imports = [[
+import org.testng.annotations.Test;
+import org.testng.annotations.BeforeMethod;
+import static org.testng.Assert.*;]],
+      class_suffix = "Test",
+    },
+    spock = {
+      name = "Spock",
+      imports = [[
+import spock.lang.Specification;]],
+      class_suffix = "Spec",
+      is_spock = true,
+    },
+  }
+  
+  local fw = frameworks[framework] or frameworks.junit5
+  local class_suffix = fw.class_suffix or "Test"
 
   local prompt = string.format([[
 === SMART TEST GENERATION ===
 
-Generate a complete JUnit 5 test class for this code:
+Generate a complete %s test class for this code:
 
 ```%s
 %s
@@ -113,27 +249,24 @@ Generate a complete JUnit 5 test class for this code:
 === REQUIREMENTS ===
 
 1. Package: %s (same as source)
-2. Class name: %sTest
-3. Framework: JUnit 5 (Jupiter)
+2. Class name: %s%s
+3. Framework: %s
 
 === OUTPUT FORMAT ===
 
 Generate ONLY the complete test file content:
 
-```java
+```%s
 %s
 
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.BeforeEach;
-import static org.junit.jupiter.api.Assertions.*;
+%s
 
 /**
  * Tests for %s
  */
-class %sTest {
+class %s%s {
     
-    // Your test methods here with @Test and @DisplayName
+    // Your test methods here
     
 }
 ```
@@ -144,16 +277,24 @@ Include tests for:
 ✅ Happy path (normal cases)
 ✅ Edge cases (null, empty, boundary values)
 ✅ Error cases (exceptions)
-✅ Use @DisplayName with readable descriptions
 
 === OUTPUT RULES ===
 
-⚠️ Output ONLY the complete Java test file
+⚠️ Output ONLY the complete test file
 ⚠️ Include ALL necessary imports
-⚠️ Use proper JUnit 5 annotations
+⚠️ Use proper %s annotations/syntax
 ⚠️ Ready to save directly to file
-]], file_info.extension, code, file_info.package_name or 'default', 
-    file_info.class_name, package_statement, file_info.class_name, file_info.class_name)
+]], 
+    fw.name, file_info.extension, code, 
+    file_info.package_name or 'default', 
+    file_info.class_name, class_suffix,
+    fw.name,
+    fw.is_spock and 'groovy' or file_info.extension,
+    package_statement, 
+    fw.imports, 
+    file_info.class_name, 
+    file_info.class_name, class_suffix,
+    fw.name)
 
   -- Use Ollama directly via curl for more control
   local cmd = string.format(
@@ -167,7 +308,7 @@ Include tests for:
       if data and data[1] then
         local ok, result = pcall(vim.fn.json_decode, data[1])
         if ok and result and result.response then
-          callback(result.response)
+          callback(result.response, framework)
         else
           callback(nil, 'Failed to parse response')
         end
@@ -175,7 +316,8 @@ Include tests for:
     end,
     on_stderr = function(_, data, _)
       if data and data[1] and data[1] ~= '' then
-        vim.notify('Error: ' .. table.concat(data, '\n'), vim.log.levels.ERROR)
+        vim.notify('Error: ' .. table.concat(data, '
+'), vim.log.levels.ERROR)
       end
     end,
   })
@@ -206,6 +348,10 @@ end
 --- Generate tests and write to test file
 function M.generate_and_write()
   local file_info = M.get_file_info()
+  
+  -- Detect test framework from project
+  local root = find_project_root()
+  local framework = detect_test_framework(root)
 
   -- Validate file type
   if file_info.extension ~= 'java' then
@@ -238,13 +384,14 @@ function M.generate_and_write()
   vim.notify(string.format([[
 🧪 Generating Tests...
 
-Source: %s
-Test:   %s
+Source:   %s
+Test:     %s
+Framework: %s
 
-Please wait...]], file_info.filename, vim.fn.fnamemodify(test_path, ':t')), vim.log.levels.INFO, { title = 'Smart Test Gen' })
+Please wait...]], file_info.filename, vim.fn.fnamemodify(test_path, ':t'), framework), vim.log.levels.INFO, { title = 'Smart Test Gen' })
 
   -- Generate tests
-  M.generate_tests(code, file_info, function(response, err)
+  M.generate_tests(code, file_info, framework, function(response, err)
     if err then
       vim.notify('❌ ' .. err, vim.log.levels.ERROR)
       return
