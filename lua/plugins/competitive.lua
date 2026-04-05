@@ -16,6 +16,12 @@ return {
       console = { open_on_runcode = true, size = { width = '75%', height = '75%' } },
       hooks = { ['enter'] = { function() vim.notify('🚀 LeetCode initialized!', vim.log.levels.INFO) end } },
       injector = { ['java'] = { before = { 'import java.util.*;', 'import java.io.*;', 'import java.math.*;', '' } } },
+      arg_fmt = {
+        java = {
+          list = function(val) return '{' .. table.concat(val, ', ') .. '}' end,
+          string = function(val) return '"' .. val .. '"' end,
+        },
+      },
     },
     keys = {
       { '<leader>Ll', '<cmd>Leet menu<cr>', desc = 'LeetCode Menu' },
@@ -49,7 +55,7 @@ return {
         testcases_directory = './testcases',
         compile_command = { java = { exec = 'javac', args = { '$(FNAME)' } } },
         run_command = { java = { exec = 'java', args = { '$(FNOEXT)' } } },
-        template_file = { java = '/home/ujjawal/templates/cp.java' },
+        template_file = { java = vim.fn.expand('/workspace/templates/competitive.java') },
       })
     end,
   },
